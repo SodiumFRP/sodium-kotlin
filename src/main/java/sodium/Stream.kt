@@ -49,7 +49,7 @@ public open class Stream<A>(
                     try {
                         // Don't allow transactions to interfere with Sodium
                         // internals.
-                        action.run(trans, a)
+                        action(trans, a)
                     } catch (t: Throwable) {
                         t.printStackTrace()
                     } finally {
@@ -419,7 +419,7 @@ class CoalesceHandler<A>(private val f: Function2<A, A, A>, private val out: Str
     private var accumValid: Boolean = false
     private var accum: A = null
 
-    override fun run(trans1: Transaction, a: A) {
+    override fun invoke(trans1: Transaction, a: A) {
         if (accumValid) {
             accum = f(accum, a)
         } else {

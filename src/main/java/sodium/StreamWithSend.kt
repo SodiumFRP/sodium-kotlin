@@ -24,7 +24,7 @@ public open class StreamWithSend<A> : Stream<A>() {
                     val uta = target.action.get()
                     if (uta != null) {
                         // If it hasn't been gc'ed..., call it
-                        (uta as TransactionHandler<A>).run(trans, a)
+                        (uta as TransactionHandler<A>)(trans, a)
                     }
                 } catch (t: Throwable) {
                     t.printStackTrace()

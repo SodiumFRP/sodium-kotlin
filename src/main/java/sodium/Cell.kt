@@ -11,13 +11,11 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
             cleanup = str.listen(Node.NULL, it, object : TransactionHandler<A> {
                 override fun run(trans2: Transaction, a: A) {
                     if (valueUpdate == null) {
-                        trans2.last(object : Runnable {
-                            override fun run() {
-                                value = valueUpdate
-                                lazyInitValue = null
-                                valueUpdate = null
-                            }
-                        })
+                        trans2.last {
+                            value = valueUpdate
+                            lazyInitValue = null
+                            valueUpdate = null
+                        }
                     }
                     valueUpdate = a
                 }
@@ -66,13 +64,11 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
     fun sampleLazy(trans: Transaction): Lazy<A> {
         val me = this
         val s = LazySample(me)
-        trans.last(object : Runnable {
-            override fun run() {
-                s.value = if (me.valueUpdate != null) me.valueUpdate else me.sampleNoTrans()
-                s.hasValue = true
-                s.cell = null
-            }
-        })
+        trans.last {
+            s.value = if (me.valueUpdate != null) me.valueUpdate else me.sampleNoTrans()
+            s.hasValue = true
+            s.cell = null
+        }
         return Lazy {
             if (s.hasValue)
                 s.value
@@ -91,11 +87,9 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
 
     fun value(trans1: Transaction): Stream<A> {
         val sSpark = StreamSink<Unit>()
-        trans1.prioritized(sSpark.node, object : Handler<Transaction> {
-            override fun run(trans2: Transaction) {
-                sSpark.send(trans2, Unit)
-            }
-        })
+        trans1.prioritized(sSpark.node) {
+            sSpark.send(it, Unit)
+        }
         val sInitial = sSpark.snapshot(this)
         return sInitial.merge(updates(trans1))
     }
@@ -113,7 +107,7 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * Transform a cell with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    public fun <B, S> collect(initState: S, f: Function2<A, S, Tuple2<B, S>>): Cell<B> {
+    public fun <B, S> collect(initState: S, f: Function2<A, S, Pair<B, S>>): Cell<B> {
         return collect(Lazy(initState), f)
     }
 
@@ -122,32 +116,27 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * is passed the input and the old state and returns the new state and output value.
      * Variant that takes a lazy initial state.
      */
-    public fun <B, S> collect(initState: Lazy<S>, f: Function2<A, S, Tuple2<B, S>>): Cell<B> {
+    public fun <B, S> collect(initState: Lazy<S>, f: Function2<A, S, Pair<B, S>>): Cell<B> {
         return Transaction.apply(object : Function1<Transaction, Cell<B>> {
             override fun invoke(trans0: Transaction): Cell<B> {
                 val ea = updates(trans0).coalesce { fst, snd ->
                     snd
                 }
                 val zbs = Lazy.lift(f, sampleLazy(), initState)
-                val ebs = StreamLoop<Tuple2<B, S>>()
+                val ebs = StreamLoop<Pair<B, S>>()
                 val bbs = ebs.holdLazy(zbs)
-                val bs = bbs.map(object : Function1<Tuple2<B, S>, S> {
-                    override fun invoke(x: Tuple2<B, S>): S {
-                        return x.b
-                    }
-                })
+                val bs = bbs.map {
+                    it.second
+                }
                 val ebs_out = ea.snapshot(bs, f)
                 ebs.loop(ebs_out)
-                return bbs.map(object : Function1<Tuple2<B, S>, B> {
-                    override fun invoke(x: Tuple2<B, S>): B {
-                        return x.a
-                    }
-                })
+                return bbs.map {
+                    it.first
+                }
             }
         })
     }
 
-    throws(Throwable::class)
     protected fun finalize() {
         if (cleanup != null)
             cleanup!!.unlisten()
@@ -157,12 +146,10 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * Listen for firings of this stream. The returned Listener has an unlisten()
      * method to cause the listener to be removed. This is the observer pattern.
      */
-    public fun listen(action: Handler<A>): Listener {
-        return Transaction.apply(object : Function1<Transaction, Listener> {
-            override fun invoke(trans: Transaction): Listener {
-                return value(trans).listen(action)
-            }
-        })
+    public fun listen(action: (A) -> Unit): Listener {
+        return Transaction.apply {
+            value(it).listen(action)
+        }
     }
 
     companion object {
@@ -170,17 +157,13 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
         /**
          * Lift a binary function into cells.
          */
-        public fun <A, B, C> lift(f: Function2<A, B, C>, a: Cell<A>, b: Cell<B>): Cell<C> {
-            val ffa = object : Function1<A, Function1<B, C>> {
-                override fun invoke(aa: A): Function1<B, C> {
-                    return object : Function1<B, C> {
-                        override fun invoke(bb: B): C {
-                            return f.invoke(aa, bb)
+        public fun <A, B, C> lift(f: (A, B) -> C, a: Cell<A>, b: Cell<B>): Cell<C> {
+            val bf = a.map(
+                    { aa: A ->
+                        { bb: B ->
+                            f.invoke(aa, bb)
                         }
-                    }
-                }
-            }
-            val bf = a.map(ffa)
+                    })
             return apply(bf, b)
         }
 
@@ -301,47 +284,42 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                 override fun invoke(trans0: Transaction): Cell<B> {
                     val out = StreamSink<B>()
 
-                    class ApplyHandler(trans0: Transaction) : Handler<Transaction> {
-                        var f: Function1<A, B>? = null
+                    class ApplyHandler() : (Transaction) -> Unit {
+                        var f: ((A) -> B)? = null
                         var a: A = null
-                        override fun run(trans1: Transaction) {
-                            trans1.prioritized(out.node, object : Handler<Transaction> {
-                                override fun run(trans2: Transaction) {
-                                    out.send(trans2, f!!.invoke(a))
-                                }
-                            })
+
+                        override fun invoke(trans1: Transaction) {
+                            trans1.prioritized(out.node) {
+                                out.send(it, f!!.invoke(a))
+                            }
                         }
                     }
 
                     val out_target = out.node
                     val in_target = Node(0)
-                    val node_target_ = arrayOfNulls<Node.Target>(1)
-                    in_target.linkTo(null, out_target, node_target_)
-                    val node_target = node_target_[0]
-                    val h = ApplyHandler(trans0)
+                    val (changed, node_target) = in_target.linkTo(null, out_target)
+                    val h = ApplyHandler()
                     val l1 = bf.value(trans0).listen_(in_target, object : TransactionHandler<Function1<A, B>> {
                         override fun run(trans1: Transaction, f: Function1<A, B>) {
                             h.f = f
                             if (h.a != null)
-                                h.run(trans1)
+                                h(trans1)
                         }
                     })
                     val l2 = ba.value(trans0).listen_(in_target, object : TransactionHandler<A> {
                         override fun run(trans1: Transaction, a: A) {
                             h.a = a
                             if (h.f != null)
-                                h.run(trans1)
+                                h(trans1)
                         }
                     })
                     return out.unsafeAddCleanup(l1).unsafeAddCleanup(l2).unsafeAddCleanup(object : Listener() {
                         override fun unlisten() {
                             in_target.unlinkTo(node_target)
                         }
-                    }).holdLazy(Lazy(object : Function0<B> {
-                        override fun invoke(): B {
-                            return bf.sampleNoTrans().invoke(ba.sampleNoTrans())
-                        }
-                    }))
+                    }).holdLazy(Lazy {
+                        bf.sampleNoTrans().invoke(ba.sampleNoTrans())
+                    })
                 }
             })
         }
@@ -409,13 +387,11 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                 private var currentListener: Listener? = bea.sampleNoTrans().listen(out.node, trans1, h2, false)
 
                 override fun run(trans2: Transaction, ea: Stream<A>) {
-                    trans2.last(object : Runnable {
-                        override fun run() {
-                            if (currentListener != null)
-                                currentListener!!.unlisten()
-                            currentListener = ea.listen(out.node, trans2, h2, true)
-                        }
-                    })
+                    trans2.last {
+                        if (currentListener != null)
+                            currentListener!!.unlisten()
+                        currentListener = ea.listen(out.node, trans2, h2, true)
+                    }
                 }
 
                 override fun finalize() {
