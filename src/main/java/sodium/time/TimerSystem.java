@@ -15,7 +15,7 @@ public class TimerSystem<T extends Comparable> {
         this.impl = impl;
         CellSink<T> timeSnk = new CellSink<T>(impl.now());
         time = timeSnk;
-        Transaction.onStart(() -> {
+        Transaction.Companion.onStart(() -> {
             T t = impl.now();
             impl.runTimersTo(t);
             while (true) {
@@ -31,8 +31,7 @@ public class TimerSystem<T extends Comparable> {
                 if (ev != null) {
                     timeSnk.send(ev.t);
                     ev.sAlarm.send(ev.t);
-                }
-                else
+                } else
                     break;
             }
             timeSnk.send(t);
@@ -74,7 +73,8 @@ public class TimerSystem<T extends Comparable> {
                         }
                         // Open and close a transaction to trigger queued
                         // events to run.
-                        Transaction.runVoid(() -> {});
+                        Transaction.Companion.runVoid(() -> {
+                        });
                     }))
                 : Optional.<Timer>empty();
         });

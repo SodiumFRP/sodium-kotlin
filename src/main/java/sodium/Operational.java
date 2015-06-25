@@ -11,10 +11,10 @@ public class Operational {
      */
     public static final <A> Stream<A> updates(Cell<A> c)
     {
-        return Transaction.apply(new Lambda1<Transaction, Stream<A>>() {
-        	public Stream<A> apply(Transaction trans) {
+        return Transaction.Companion.apply(new Function1<Transaction, Stream<A>>() {
+            public Stream<A> apply(Transaction trans) {
                 return c.updates(trans);
-        	}
+            }
         });
     }
 
@@ -30,10 +30,10 @@ public class Operational {
      */
     public static final <A> Stream<A> value(Cell<A> c)
     {
-        return Transaction.apply(new Lambda1<Transaction, Stream<A>>() {
-        	public Stream<A> apply(Transaction trans) {
-        		return c.value(trans);
-        	}
+        return Transaction.Companion.apply(new Function1<Transaction, Stream<A>>() {
+            public Stream<A> apply(Transaction trans) {
+                return c.value(trans);
+            }
         });
     }
 }

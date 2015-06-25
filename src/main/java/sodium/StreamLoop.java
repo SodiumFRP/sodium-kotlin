@@ -5,7 +5,7 @@ public class StreamLoop<A> extends StreamWithSend<A> {
 
     public StreamLoop()
     {
-    	if (Transaction.getCurrentTransaction() == null)
+    	if (Transaction.Companion.getCurrent() == null)
     	    throw new RuntimeException("StreamLoop/CellLoop must be used within an explicit transaction");
     }
 
@@ -15,7 +15,7 @@ public class StreamLoop<A> extends StreamWithSend<A> {
             throw new RuntimeException("StreamLoop looped more than once");
         assigned = true;
         final StreamLoop<A> me = this;
-        unsafeAddCleanup(ea_out.listen_(node, new TransactionHandler<A>() {
+        unsafeAddCleanup(ea_out.listen_(getNode(), new TransactionHandler<A>() {
             public void run(Transaction trans, A a) {
                 me.send(trans, a);
             }
