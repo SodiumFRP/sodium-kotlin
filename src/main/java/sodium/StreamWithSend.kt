@@ -3,19 +3,18 @@ package sodium
 import java.util.HashSet
 
 public open class StreamWithSend<A> : Stream<A>() {
-
-    protected fun send(trans: Transaction, a: A) {
+    fun send(trans: Transaction, a: A) {
         if (firings.isEmpty())
             trans.last {
                 firings.clear()
             }
         firings.add(a)
 
-        var listeners: HashSet<Node.Target>
-        synchronized (Transaction.listenersLock) {
-            listeners = HashSet(node.listeners)
+        val listeners = synchronized (Transaction.listenersLock) {
+            HashSet(node.listeners)
         }
-        for (target in node.listeners) {
+
+        for (target in listeners) {
             trans.prioritized(target.node) {
                 Transaction.inCallback++
                 try {

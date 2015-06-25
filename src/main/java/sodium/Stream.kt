@@ -2,49 +2,17 @@ package sodium
 
 import java.util.ArrayList
 
-public open class Stream<A> {
-    class ListenerImplementation<A> private constructor(
-            /**
-             * It's essential that we keep the listener alive while the caller holds
-             * the Listener, so that the finalizer doesn't get triggered.
-             */
-            private var event: Stream<A>?,
-            /**
-             * It's also essential that we keep the action alive, since the node uses
-             * a weak reference.
-             */
-            private var action: TransactionHandler<A>?, private var target: Node.Target?) : Listener() {
-
-        override fun unlisten() {
-            synchronized (Transaction.listenersLock) {
-                if (event != null) {
-                    event!!.node.unlinkTo(target)
-                    event = null
-                    action = null
-                    target = null
-                }
-            }
-        }
-    }
-
-    val node: Node
-    protected val finalizers: MutableList<Listener>
-    protected val firings: MutableList<A>
+public open class Stream<A>(
+        val node: Node,
+        val finalizers: MutableList<Listener>,
+        val firings: MutableList<A>) {
 
     /**
      * An event that never fires.
      */
-    public constructor() {
-        node = Node(0L)
-        finalizers = ArrayList<Listener>()
-        firings = ArrayList<A>()
+    public constructor() : this(Node(0L), ArrayList<Listener>(), ArrayList<A>()) {
     }
 
-    private constructor(node: Node, finalizers: MutableList<Listener>, firings: List<A>) {
-        this.node = node
-        this.finalizers = finalizers
-        this.firings = firings
-    }
 
     /**
      * Listen for firings of this event. The returned Listener has an unlisten()
@@ -96,12 +64,11 @@ public open class Stream<A> {
     /**
      * Transform the event's value according to the supplied function.
      */
-    public fun <B> map(f: Function1<A, B>): Stream<B> {
-        val ev = this
+    public fun <B> map(transform: Function1<A, B>): Stream<B> {
         val out = StreamSink<B>()
         val l = listen_(out.node, object : TransactionHandler<A> {
             override fun run(trans2: Transaction, a: A) {
-                out.send(trans2, f.apply(a))
+                out.send(trans2, transform(a))
             }
         })
         return out.unsafeAddCleanup(l)
@@ -115,19 +82,15 @@ public open class Stream<A> {
      * the transaction.
      */
     public fun hold(initValue: A): Cell<A> {
-        return Transaction.apply(object : Function1<Transaction, Cell<A>>() {
-            override fun invoke(trans: Transaction): Cell<A> {
-                return Cell(initValue, lastFiringOnly(trans))
-            }
-        })
+        return Transaction.apply {
+            Cell(initValue, lastFiringOnly(it))
+        }
     }
 
     public fun holdLazy(initValue: Lazy<A>): Cell<A> {
-        return Transaction.apply(object : Function1<Transaction, Cell<A>>() {
-            override fun invoke(trans: Transaction): Cell<A> {
-                return holdLazy(trans, initValue)
-            }
-        })
+        return Transaction.apply {
+            holdLazy(it, initValue)
+        }
     }
 
     fun holdLazy(trans: Transaction, initValue: Lazy<A>): Cell<A> {
@@ -138,11 +101,9 @@ public open class Stream<A> {
      * Variant of snapshot that throws away the event's value and captures the behavior's.
      */
     public fun <B> snapshot(beh: Cell<B>): Stream<B> {
-        return snapshot(beh, object : Function2<A, B, B> {
-            override fun invoke(a: A, b: B): B {
-                return b
-            }
-        })
+        return snapshot(beh) { a, b ->
+            b
+        }
     }
 
     /**
@@ -150,8 +111,7 @@ public open class Stream<A> {
      * of the behavior that's sampled is the value as at the start of the transaction
      * before any state changes of the current transaction are applied through 'hold's.
      */
-    public fun <B, C> snapshot(b: Cell<B>, f: Function2<A, B, C>): Stream<C> {
-        val ev = this
+    public fun <B, C> snapshot(b: Cell<B>, f: (A, B) -> C): Stream<C> {
         val out = StreamSink<C>()
         val l = listen_(out.node, object : TransactionHandler<A> {
             override fun run(trans2: Transaction, a: A) {
@@ -170,8 +130,8 @@ public open class Stream<A> {
      * their ordering is retained. In many common cases the ordering will
      * be undefined.
      */
-    public fun merge(eb: Stream<A>): Stream<A> {
-        return Stream.merge(this, eb)
+    public fun merge(stream: Stream<A>): Stream<A> {
+        return Stream.merge(this, stream)
     }
 
     /**
@@ -182,16 +142,14 @@ public open class Stream<A> {
         val out = StreamSink<A>()
         val l1 = listen_(out.node, object : TransactionHandler<A> {
             override fun run(trans: Transaction, a: A) {
-                trans.post(object : Runnable {
-                    override fun run() {
-                        val trans = Transaction()
-                        try {
-                            out.send(trans, a)
-                        } finally {
-                            trans.close()
-                        }
+                trans.post {
+                    val newTrans = Transaction()
+                    try {
+                        out.send(newTrans, a)
+                    } finally {
+                        newTrans.close()
                     }
-                })
+                }
             }
         })
         return out.unsafeAddCleanup(l1)
@@ -212,11 +170,11 @@ public open class Stream<A> {
         }
     }
 
-    fun coalesce(trans1: Transaction, f: (A, A) -> A): Stream<A> {
+    fun coalesce(transaction: Transaction, combine: (A, A) -> A): Stream<A> {
         val out = StreamSink<A>()
-        val h = CoalesceHandler(f, out)
-        val l = listen(out.node, trans1, h, false)
-        return out.unsafeAddCleanup(l)
+        val handler = CoalesceHandler(combine, out)
+        val listener = listen(out.node, transaction, handler, false)
+        return out.unsafeAddCleanup(listener)
     }
 
     /**
@@ -236,15 +194,14 @@ public open class Stream<A> {
      * within the same transaction), they are combined using the same logic as
      * 'coalesce'.
      */
-    public fun merge(eb: Stream<A>, f: Function2<A, A, A>): Stream<A> {
-        return merge(eb).coalesce(f)
+    public fun merge(stream: Stream<A>, combine: Function2<A, A, A>): Stream<A> {
+        return merge(stream).coalesce(combine)
     }
 
     /**
      * Only keep event occurrences for which the predicate returns true.
      */
     public fun filter(f: Function1<A, Boolean>): Stream<A> {
-        val ev = this
         val out = StreamSink<A>()
         val l = listen_(out.node, object : TransactionHandler<A> {
             override fun run(trans2: Transaction, a: A) {
@@ -283,19 +240,17 @@ public open class Stream<A> {
      * Note that the behavior's value is as it was at the start of the transaction,
      * that is, no state changes from the current transaction are taken into account.
      */
-    public fun gate(bPred: Cell<Boolean>): Stream<A> {
-        return snapshot(bPred, object : Function2<A, Boolean, A>() {
-            override fun invoke(a: A, pred: Boolean?): A? {
-                return if (pred) a else null
-            }
-        }).filterNotNull()
+    public fun gate(predicate: Cell<Boolean>): Stream<A> {
+        return snapshot(predicate) { event, predicateValue ->
+            if (predicateValue) event else null
+        }.filterNotNull() as Stream<A>
     }
 
     /**
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    public fun <B, S> collect(initState: S, f: Function2<A, S, Tuple2<B, S>>): Stream<B> {
+    public fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): Stream<B> {
         return collectLazy(Lazy(initState), f)
     }
 
@@ -303,22 +258,18 @@ public open class Stream<A> {
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    public fun <B, S> collectLazy(initState: Lazy<S>, f: Function2<A, S, Tuple2<B, S>>): Stream<B> {
+    public fun <B, S> collectLazy(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Stream<B> {
         return Transaction.apply {
             val ea = this@Stream
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
             val ebs = ea.snapshot(s, f)
-            val eb = ebs.map(object : Function1<Tuple2<B, S>, B>() {
-                override fun invoke(bs: Tuple2<B, S>): B {
-                    return bs.a
-                }
-            })
-            val es_out = ebs.map(object : Function1<Tuple2<B, S>, S>() {
-                override fun invoke(bs: Tuple2<B, S>): S {
-                    return bs.b
-                }
-            })
+            val eb = ebs.map {
+                it.first
+            }
+            val es_out = ebs.map {
+                it.second
+            }
             es.loop(es_out)
             eb
         }
@@ -327,7 +278,7 @@ public open class Stream<A> {
     /**
      * Accumulate on input event, outputting the new state each time.
      */
-    public fun <S> accum(initState: S, f: Function2<A, S, S>): Cell<S> {
+    public fun <S> accum(initState: S, f: (A, S) -> S): Cell<S> {
         return accumLazy(Lazy(initState), f)
     }
 
@@ -335,7 +286,7 @@ public open class Stream<A> {
      * Accumulate on input event, outputting the new state each time.
      * Variant that takes a lazy initial state.
      */
-    public fun <S> accumLazy(initState: Lazy<S>, f: Function2<A, S, S>): Cell<S> {
+    public fun <S> accumLazy(initState: Lazy<S>, f: (A, S) -> S): Cell<S> {
         return Transaction.apply {
             val ea = this@Stream
             val es = StreamLoop<S>()
@@ -352,19 +303,20 @@ public open class Stream<A> {
     public fun once(): Stream<A> {
         // This is a bit long-winded but it's efficient because it deregisters
         // the listener.
-        val ev = this
         val la = arrayOfNulls<Listener>(1)
         val out = StreamSink<A>()
-        la[0] = ev.listen_(out.node, object : TransactionHandler<A> {
+        la[0] = listen_(out.node, object : TransactionHandler<A> {
             override fun run(trans: Transaction, a: A) {
-                if (la[0] != null) {
+                val listener = la[0]
+                if (listener != null) {
                     out.send(trans, a)
-                    la[0].unlisten()
+                    listener.unlisten()
                     la[0] = null
                 }
             }
         })
-        return out.unsafeAddCleanup(la[0])
+        val listener = la[0]
+        return if (listener == null) this else out.unsafeAddCleanup(listener)
     }
 
     fun unsafeAddCleanup(cleanup: Listener): Stream<A> {
@@ -378,7 +330,6 @@ public open class Stream<A> {
         return Stream(node, fsNew, firings)
     }
 
-    throws(Throwable::class)
     protected fun finalize() {
         for (l in finalizers)
             l.unlisten()
@@ -399,9 +350,7 @@ public open class Stream<A> {
             val out = StreamSink<A>()
             val left = Node(0)
             val right = out.node
-            val node_target_ = arrayOfNulls<Node.Target>(1)
-            left.linkTo(null, right, node_target_)
-            val node_target = node_target_[0]
+            val (changed, node_target) = left.linkTo(null, right)
             val h = object : TransactionHandler<A> {
                 override fun run(trans: Transaction, a: A) {
                     out.send(trans, a)
@@ -421,42 +370,64 @@ public open class Stream<A> {
          */
         public fun <A, C : Collection<A>> split(s: Stream<C>): Stream<A> {
             val out = StreamSink<A>()
-            val l1 = s.listen_(out.node, object : TransactionHandler<C> {
-                override fun run(trans: Transaction, `as`: C) {
-                    trans.post(object : Runnable {
-                        override fun run() {
-                            for (a in `as`) {
-                                val trans = Transaction()
-                                try {
-                                    out.send(trans, a)
-                                } finally {
-                                    trans.close()
-                                }
+            val listener = s.listen_(out.node, object : TransactionHandler<C> {
+                override fun run(trans: Transaction, events: C) {
+                    trans.post {
+                        for (event in events) {
+                            val newTransaction = Transaction()
+                            try {
+                                out.send(newTransaction, event)
+                            } finally {
+                                newTransaction.close()
                             }
                         }
-                    })
+                    }
                 }
             })
-            return out.unsafeAddCleanup(l1)
+            return out.unsafeAddCleanup(listener)
+        }
+    }
+
+    class ListenerImplementation<A>(
+            /**
+             * It's essential that we keep the listener alive while the caller holds
+             * the Listener, so that the finalizer doesn't get triggered.
+             */
+            private var event: Stream<A>?,
+            /**
+             * It's also essential that we keep the action alive, since the node uses
+             * a weak reference.
+             */
+            private var action: TransactionHandler<A>?, private var target: Node.Target?) : Listener() {
+
+        override fun unlisten() {
+            synchronized (Transaction.listenersLock) {
+                val stream = event
+                val node = target
+                if (stream != null && node != null) {
+                    stream.node.unlinkTo(node)
+                    event = null
+                    action = null
+                    target = null
+                }
+            }
         }
     }
 }
 
 class CoalesceHandler<A>(private val f: Function2<A, A, A>, private val out: StreamSink<A>) : TransactionHandler<A> {
     private var accumValid: Boolean = false
-    private var accum: A? = null
+    private var accum: A = null
+
     override fun run(trans1: Transaction, a: A) {
-        if (accumValid)
-            accum = f.apply(accum, a)
-        else {
-            val thiz = this
-            trans1.prioritized(out.node, object : Handler<Transaction> {
-                override fun run(trans2: Transaction) {
-                    out.send(trans2, thiz.accum)
-                    thiz.accumValid = false
-                    thiz.accum = null
-                }
-            })
+        if (accumValid) {
+            accum = f(accum, a)
+        } else {
+            trans1.prioritized(out.node) {
+                out.send(it, accum)
+                accumValid = false
+                accum = null
+            }
             accum = a
             accumValid = true
         }
