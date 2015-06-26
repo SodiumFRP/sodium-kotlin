@@ -11,10 +11,10 @@ public class Transaction {
     private val prioritizedQ = PriorityQueue<Entry>()
     private val entries = HashSet<Entry>()
     private val lastQ = ArrayList<() -> Unit>()
-    private var postQ: MutableList<() -> Unit>? = null
+    private val postQ = ArrayList<() -> Unit>()
 
-    public fun prioritized(rank: Node, action: (Transaction) -> Unit) {
-        val e = Entry(rank, action)
+    public fun prioritized(node: Node, action: (Transaction) -> Unit) {
+        val e = Entry(node, action)
         prioritizedQ.add(e)
         entries.add(e)
     }
@@ -30,9 +30,7 @@ public class Transaction {
      * Add an action to run after all last() actions.
      */
     public fun post(action: () -> Unit) {
-        if (postQ == null)
-            postQ = ArrayList<() -> Unit>()
-        postQ!!.add(action)
+        postQ.add(action)
     }
 
     /**
@@ -43,56 +41,58 @@ public class Transaction {
         if (toRegen) {
             toRegen = false
             prioritizedQ.clear()
-            for (e in entries)
+            for (e in entries) {
                 prioritizedQ.add(e)
+            }
         }
     }
 
     fun close() {
         while (true) {
             checkRegen()
-            if (prioritizedQ.isEmpty()) break
+            if (prioritizedQ.isEmpty())
+                break
             val e = prioritizedQ.remove()
             entries.remove(e)
             e.action(this)
         }
-        for (action in lastQ)
+
+        for (action in lastQ) {
             action()
-        lastQ.clear()
-        if (postQ != null) {
-            for (action in postQ!!)
-                action()
-            postQ!!.clear()
         }
+        lastQ.clear()
+
+        for (action in postQ) {
+            action()
+        }
+        postQ.clear()
     }
 
-	private class Entry(private val rank: Node, val action: (Transaction) -> Unit) : Comparable<Entry> {
-		private val seq: Long
-
-		init {
-			seq = nextSeq++
-		}
+	private class Entry(val node: Node, val action: (Transaction) -> Unit) : Comparable<Entry> {
+		private val seq: Long = nextSeq++
 
 		override fun compareTo(other: Entry): Int {
-			var answer = rank.compareTo(other.rank)
-			if (answer == 0) {
+			val answer = node.compareTo(other.node)
+			return if (answer == 0) {
 				// Same rank: preserve chronological sequence.
-				if (seq < other.seq)
-					answer = -1
-				else if (seq > other.seq) answer = 1
-			}
-			return answer
+                when {
+                    seq < other.seq -> -1
+                    seq > other.seq -> 1
+                    else -> 0
+                }
+			} else {
+                answer
+            }
 		}
 
 		companion object {
 			private var nextSeq: Long = 0
 		}
-
 	}
 
     companion object {
         // Coarse-grained lock that's held during the whole transaction.
-        val transactionLock = Object()
+        public val transactionLock: Object = Object()
         // Fine-grained lock that protects listeners and nodes.
         val listenersLock = Object()
 
@@ -132,36 +132,76 @@ public class Transaction {
          * transaction automatically. It is useful where you want to run multiple
          * reactive operations atomically.
          */
-        public fun <A> apply(code: (Transaction) -> A): A {
-            synchronized (transactionLock) {
-                // If we are already inside a transaction (which must be on the same
-                // thread otherwise we wouldn't have acquired transactionLock), then
-                // keep using that same transaction.
-                val transWas = currentTransaction
-                try {
-                    return code(startIfNecessary())
-                } finally {
-                    if (transWas == null)
-                        currentTransaction!!.close()
-                    currentTransaction = transWas
-                }
-            }
-        }
+        public fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
+            // If we are already inside a transaction (which must be on the same
+            // thread otherwise we wouldn't have acquired transactionLock), then
+            // keep using that same transaction.
 
-        private fun startIfNecessary(): Transaction {
-            return currentTransaction ?: run {
+            val transWas = currentTransaction
+            if (transWas != null) {
+                code(transWas)
+            } else {
                 if (!runningOnStartHooks) {
                     runningOnStartHooks = true
                     try {
-                        for (r in onStartHooks)
+                        for (r in onStartHooks) {
                             r.run()
+                        }
                     } finally {
                         runningOnStartHooks = false
                     }
                 }
+
+                val transaction = Transaction()
+                currentTransaction = transaction
+
+                try {
+                    code(transaction)
+                } finally {
+                    transaction.close()
+                    currentTransaction = null
+                }
+            }
+        }
+
+        public fun needClose(): Boolean = currentTransaction == null
+
+        public fun begin(): Transaction {
+            val transWas = currentTransaction
+            return if (transWas != null) {
+                transWas
+            } else {
+                if (!runningOnStartHooks) {
+                    runningOnStartHooks = true
+                    try {
+                        for (r in onStartHooks) {
+                            r.run()
+                        }
+                    } finally {
+                        runningOnStartHooks = false
+                    }
+                }
+
                 val transaction = Transaction()
                 currentTransaction = transaction
                 transaction
+            }
+        }
+
+        public fun end() {
+            currentTransaction?.close()
+            currentTransaction = null
+        }
+
+        public inline fun <A> apply2(code: (Transaction) -> A): A = synchronized (transactionLock) {
+            val needClose = needClose()
+            val transaction = begin()
+            try {
+                code(transaction)
+            } finally {
+                if (needClose) {
+                    end()
+                }
             }
         }
     }

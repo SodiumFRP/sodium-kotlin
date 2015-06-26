@@ -20,7 +20,7 @@ public open class Stream<A>(
      */
     public fun listen(action: (A) -> Unit): Listener {
         return listen_(Node.NULL, object : TransactionHandler<A> {
-            override fun run(trans2: Transaction, a: A) {
+            override fun invoke(trans2: Transaction, a: A) {
                 action(a)
             }
         })
@@ -33,12 +33,13 @@ public open class Stream<A>(
     }
 
     fun listen(target: Node, trans: Transaction, action: TransactionHandler<A>, suppressEarlierFirings: Boolean): Listener {
-        val node_target = synchronized (Transaction.listenersLock) {
-            val (changed, node_target) = node.linkTo(action, target)
+        val nodeTarget = synchronized (Transaction.listenersLock) {
+            val (changed, nodeTarget) = node.linkTo(action, target)
             if (changed)
                 trans.toRegen = true
-            node_target
+            nodeTarget
         }
+
         val firings = ArrayList(this.firings)
         if (!suppressEarlierFirings && !firings.isEmpty()) {
             trans.prioritized(target) {
@@ -58,7 +59,7 @@ public open class Stream<A>(
                 }
             }
         }
-        return ListenerImplementation(this, action, node_target)
+        return ListenerImplementation(this, action, nodeTarget)
     }
 
     /**
@@ -141,7 +142,7 @@ public open class Stream<A>(
     public fun defer(): Stream<A> {
         val out = StreamSink<A>()
         val l1 = listen_(out.node, object : TransactionHandler<A> {
-            override fun run(trans: Transaction, a: A) {
+            override fun invoke(trans: Transaction, a: A) {
                 trans.post {
                     val newTrans = Transaction()
                     try {

@@ -2,14 +2,14 @@ package sodium
 
 public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>()) {
     var valueUpdate: A = null
-    private var cleanup: Listener? = null
+    private var listener: Listener? = null
     protected var lazyInitValue: Lazy<A>? = null  // Used by LazyCell
 
     init {
         val str = str
-        Transaction.apply {
-            cleanup = str.listen(Node.NULL, it, object : TransactionHandler<A> {
-                override fun run(trans2: Transaction, a: A) {
+        Transaction.apply2 {
+            listener = str.listen(Node.NULL, it, object : TransactionHandler<A> {
+                override fun invoke(trans2: Transaction, a: A) {
                     if (valueUpdate == null) {
                         trans2.last {
                             value = valueUpdate
@@ -138,8 +138,8 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
     }
 
     protected fun finalize() {
-        if (cleanup != null)
-            cleanup!!.unlisten()
+        if (listener != null)
+            listener!!.unlisten()
     }
 
     /**
