@@ -28,11 +28,11 @@ public open class Stream<A>(
 
     fun listen_(target: Node, action: TransactionHandler<A>): Listener {
         return Transaction.apply {
-            listen(target, it, action, false)
+            listen(target, it, false, action)
         }
     }
 
-    fun listen(target: Node, trans: Transaction, action: TransactionHandler<A>, suppressEarlierFirings: Boolean): Listener {
+    fun listen(target: Node, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, newValue: A) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             val (changed, nodeTarget) = node.linkTo(action, target)
             if (changed)
@@ -174,7 +174,7 @@ public open class Stream<A>(
     fun coalesce(transaction: Transaction, combine: (A, A) -> A): Stream<A> {
         val out = StreamSink<A>()
         val handler = CoalesceHandler(combine, out)
-        val listener = listen(out.node, transaction, handler, false)
+        val listener = listen(out.node, transaction, false, handler)
         return out.unsafeAddCleanup(listener)
     }
 

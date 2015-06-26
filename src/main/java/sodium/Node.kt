@@ -36,9 +36,11 @@ public class Node(private var rank: Long) : Comparable<Node> {
     }
 
     override fun compareTo(other: Node): Int {
-        if (rank < other.rank) return -1
-        if (rank > other.rank) return 1
-        return 0
+        return when {
+            rank < other.rank -> -1
+            rank > other.rank -> 1
+            else -> 0
+        }
     }
 
     companion object {

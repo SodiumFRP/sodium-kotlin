@@ -23,11 +23,9 @@ public class Lazy<A> {
      * Map the lazy value according to the specified function.
      */
     public fun <B> map(f2: Function1<A, B>): Lazy<B> {
-        return Lazy(object : Function0<B> {
-            override fun invoke(): B {
-                return f2.invoke(get())
-            }
-        })
+        return Lazy {
+            f2.invoke(get())
+        }
     }
 
     companion object {

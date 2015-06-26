@@ -1,25 +1,22 @@
 package sodium
 
-public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>()) {
+public open class Cell<A>(var value: A, protected val stream: Stream<A> = Stream<A>()) {
     var valueUpdate: A = null
     private var listener: Listener? = null
     protected var lazyInitValue: Lazy<A>? = null  // Used by LazyCell
 
     init {
-        val str = str
         Transaction.apply2 {
-            listener = str.listen(Node.NULL, it, object : TransactionHandler<A> {
-                override fun invoke(trans2: Transaction, a: A) {
-                    if (valueUpdate == null) {
-                        trans2.last {
-                            value = valueUpdate
-                            lazyInitValue = null
-                            valueUpdate = null
-                        }
+            listener = stream.listen(Node.NULL, it, false) { trans2, newValue ->
+                if (valueUpdate == null) {
+                    trans2.last {
+                        value = valueUpdate
+                        lazyInitValue = null
+                        valueUpdate = null
                     }
-                    valueUpdate = a
                 }
-            }, false)
+                valueUpdate = newValue
+            }
         }
     }
 
@@ -42,30 +39,24 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * of missing any in between.
      */
     public fun sample(): A {
-        return Transaction.apply {
+        return Transaction.apply2 {
             sampleNoTrans()
         }
-    }
-
-    private class LazySample<A>(var cell: Cell<A>?) {
-        var hasValue: Boolean = false
-        var value: A = null
     }
 
     /**
      * A variant of sample() that works for CellLoops when they haven't been looped yet.
      */
     public fun sampleLazy(): Lazy<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             sampleLazy(it)
         }
     }
 
     fun sampleLazy(trans: Transaction): Lazy<A> {
-        val me = this
-        val s = LazySample(me)
+        val s = LazySample(this)
         trans.last {
-            s.value = if (me.valueUpdate != null) me.valueUpdate else me.sampleNoTrans()
+            s.value = valueUpdate ?: sampleNoTrans()
             s.hasValue = true
             s.cell = null
         }
@@ -82,7 +73,7 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
     }
 
     fun updates(trans: Transaction): Stream<A> {
-        return str.lastFiringOnly(trans)
+        return stream.lastFiringOnly(trans)
     }
 
     fun value(trans1: Transaction): Stream<A> {
@@ -98,7 +89,7 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * Transform the cell's value according to the supplied function.
      */
     public fun <B> map(f: Function1<A, B>): Cell<B> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             updates(it).map(f).holdLazy(it, sampleLazy(it).map(f))
         }
     }
@@ -117,29 +108,26 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
      * Variant that takes a lazy initial state.
      */
     public fun <B, S> collect(initState: Lazy<S>, f: Function2<A, S, Pair<B, S>>): Cell<B> {
-        return Transaction.apply(object : Function1<Transaction, Cell<B>> {
-            override fun invoke(trans0: Transaction): Cell<B> {
-                val ea = updates(trans0).coalesce { fst, snd ->
-                    snd
-                }
-                val zbs = Lazy.lift(f, sampleLazy(), initState)
-                val ebs = StreamLoop<Pair<B, S>>()
-                val bbs = ebs.holdLazy(zbs)
-                val bs = bbs.map {
-                    it.second
-                }
-                val ebs_out = ea.snapshot(bs, f)
-                ebs.loop(ebs_out)
-                return bbs.map {
-                    it.first
-                }
+        return Transaction.apply2 {
+            val ea = updates(it).coalesce { fst, snd ->
+                snd
             }
-        })
+            val zbs = Lazy.lift(f, sampleLazy(), initState)
+            val ebs = StreamLoop<Pair<B, S>>()
+            val bbs = ebs.holdLazy(zbs)
+            val bs = bbs.map {
+                it.second
+            }
+            val ebs_out = ea.snapshot(bs, f)
+            ebs.loop(ebs_out)
+            bbs.map {
+                it.first
+            }
+        }
     }
 
     protected fun finalize() {
-        if (listener != null)
-            listener!!.unlisten()
+        listener?.unlisten()
     }
 
     /**
@@ -348,11 +336,11 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                             // that might have happened during this transaction will be suppressed.
                             if (currentListener != null)
                                 currentListener!!.unlisten()
-                            currentListener = ba.value(trans2).listen(out.node, trans2, object : TransactionHandler<A> {
+                            currentListener = ba.value(trans2).listen(out.node, trans2, false, object : TransactionHandler<A> {
                                 override fun run(trans3: Transaction, a: A) {
                                     out.send(trans3, a)
                                 }
-                            }, false)
+                            })
                         }
 
                         override fun finalize() {
@@ -385,13 +373,13 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                 }
             }
             val h1 = object : TransactionHandler<Stream<A>> {
-                private var currentListener: Listener? = bea.sampleNoTrans().listen(out.node, trans1, h2, false)
+                private var currentListener: Listener? = bea.sampleNoTrans().listen(out.node, trans1, false, h2)
 
                 override fun run(trans2: Transaction, ea: Stream<A>) {
                     trans2.last {
                         if (currentListener != null)
                             currentListener!!.unlisten()
-                        currentListener = ea.listen(out.node, trans2, h2, true)
+                        currentListener = ea.listen(out.node, trans2, true, h2)
                     }
                 }
 
@@ -400,8 +388,13 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                         currentListener!!.unlisten()
                 }
             }
-            val l1 = bea.updates(trans1).listen(out.node, trans1, h1, false)
+            val l1 = bea.updates(trans1).listen(out.node, trans1, false, h1)
             return out.unsafeAddCleanup(l1)
         }
+    }
+
+    private class LazySample<A>(var cell: Cell<A>?) {
+        var hasValue: Boolean = false
+        var value: A = null
     }
 }
