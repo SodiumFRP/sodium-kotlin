@@ -371,7 +371,7 @@ public open class Stream<A>(
         public fun <A, C : Collection<A>> split(s: Stream<C>): Stream<A> {
             val out = StreamSink<A>()
             val listener = s.listen_(out.node, object : TransactionHandler<C> {
-                override fun run(trans: Transaction, events: C) {
+                override fun invoke(trans: Transaction, events: C) {
                     trans.post {
                         for (event in events) {
                             val newTransaction = Transaction()
@@ -387,29 +387,30 @@ public open class Stream<A>(
             return out.unsafeAddCleanup(listener)
         }
     }
+}
 
-    class ListenerImplementation<A>(
-            /**
-             * It's essential that we keep the listener alive while the caller holds
-             * the Listener, so that the finalizer doesn't get triggered.
-             */
-            private var event: Stream<A>?,
-            /**
-             * It's also essential that we keep the action alive, since the node uses
-             * a weak reference.
-             */
-            private var action: TransactionHandler<A>?, private var target: Node.Target?) : Listener() {
+class ListenerImplementation<A>(
+        /**
+         * It's essential that we keep the listener alive while the caller holds
+         * the Listener, so that the finalizer doesn't get triggered.
+         */
+        private var event: Stream<A>?,
+        /**
+         * It's also essential that we keep the action alive, since the node uses
+         * a weak reference.
+         */
+        private var action: TransactionHandler<A>?,
+        private var target: Node.Target?) : Listener() {
 
-        override fun unlisten() {
-            synchronized (Transaction.listenersLock) {
-                val stream = event
-                val node = target
-                if (stream != null && node != null) {
-                    stream.node.unlinkTo(node)
-                    event = null
-                    action = null
-                    target = null
-                }
+    override fun unlisten() {
+        synchronized (Transaction.listenersLock) {
+            val stream = event
+            val node = target
+            if (stream != null && node != null) {
+                stream.node.unlinkTo(node)
+                event = null
+                action = null
+                target = null
             }
         }
     }

@@ -1,7 +1,6 @@
 package sodium
 
 import java.lang.ref.WeakReference
-import java.util.ArrayList
 import java.util.HashSet
 
 public class Node(private var rank: Long) : Comparable<Node> {
@@ -10,13 +9,13 @@ public class Node(private var rank: Long) : Comparable<Node> {
         val action = WeakReference(action)
     }
 
-    var listeners: MutableList<Target> = ArrayList()
+    val listeners = HashSet<Target>()
 
     /**
      * @return true if any changes were made.
      */
     fun linkTo(action: TransactionHandler<*>?, node: Node): Pair<Boolean, Target> {
-        val changed = node.ensureBiggerThan(rank, HashSet<Node>())
+        val changed = node.ensureBiggerThan(rank)
         val target = Target(action, node)
         listeners.add(target)
         return changed to target
@@ -26,14 +25,13 @@ public class Node(private var rank: Long) : Comparable<Node> {
         listeners.remove(target)
     }
 
-    private fun ensureBiggerThan(limit: Long, visited: MutableSet<Node>): Boolean {
-        if (rank > limit || visited.contains(this))
+    private fun ensureBiggerThan(limit: Long): Boolean {
+        if (rank > limit)
             return false
 
-        visited.add(this)
         rank = limit + 1
         for (l in listeners)
-            l.node.ensureBiggerThan(rank, visited)
+            l.node.ensureBiggerThan(rank)
         return true
     }
 

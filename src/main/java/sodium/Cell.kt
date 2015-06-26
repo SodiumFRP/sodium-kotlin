@@ -338,7 +338,8 @@ public open class Cell<A>(var value: A, protected val str: Stream<A> = Stream<A>
                     val out = StreamSink<A>()
                     val h = object : TransactionHandler<Cell<A>> {
                         private var currentListener: Listener? = null
-                        override fun run(trans2: Transaction, ba: Cell<A>) {
+
+                        override fun invoke(trans2: Transaction, ba: Cell<A>) {
                             // Note: If any switch takes place during a transaction, then the
                             // value().listen will always cause a sample to be fetched from the
                             // one we just switched to. The caller will be fetching our output

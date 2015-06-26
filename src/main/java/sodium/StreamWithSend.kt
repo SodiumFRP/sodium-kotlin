@@ -1,7 +1,5 @@
 package sodium
 
-import java.util.HashSet
-
 public open class StreamWithSend<A> : Stream<A>() {
     fun send(trans: Transaction, a: A) {
         if (firings.isEmpty())
@@ -11,7 +9,7 @@ public open class StreamWithSend<A> : Stream<A>() {
         firings.add(a)
 
         val listeners = synchronized (Transaction.listenersLock) {
-            HashSet(node.listeners)
+            node.listeners.toTypedArray()
         }
 
         for (target in listeners) {
@@ -24,7 +22,8 @@ public open class StreamWithSend<A> : Stream<A>() {
                     val uta = target.action.get()
                     if (uta != null) {
                         // If it hasn't been gc'ed..., call it
-                        (uta as TransactionHandler<A>)(trans, a)
+                        val handler = uta as TransactionHandler<A>
+                        handler(trans, a)
                     }
                 } catch (t: Throwable) {
                     t.printStackTrace()
