@@ -119,7 +119,7 @@ public open class Stream<A>(
 
     /**
      * Merge two streams of events of the same type.
-
+     *
      * In the case where two event occurrences are simultaneous (i.e. both
      * within the same transaction), both will be delivered in the same
      * transaction. If the event firings are ordered for some reason, then

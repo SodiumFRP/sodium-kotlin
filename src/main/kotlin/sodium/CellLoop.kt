@@ -6,7 +6,7 @@ public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), null) {
         val me = this
         Transaction.apply {
             (me.stream as StreamLoop<A>).loop(a_out.updates(it))
-            me.lazyInitValue = a_out.sampleLazy(it)
+            me.lazyValue = a_out.sampleLazy(it)
         }
     }
 

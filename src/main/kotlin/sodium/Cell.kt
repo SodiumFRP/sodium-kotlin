@@ -1,23 +1,25 @@
 package sodium
 
-public open class Cell<A>(var value: A, protected val stream: Stream<A> = Stream<A>()) {
+public open class Cell<A> jvmOverloads public constructor(var value: A, protected val stream: Stream<A> = Stream<A>()) {
     var valueUpdate: A = null
     private var listener: Listener? = null
-    protected var lazyInitValue: Lazy<A>? = null  // Used by LazyCell
 
     init {
         Transaction.apply2 {
             listener = stream.listen(Node.NULL, it, false) { trans2, newValue ->
                 if (valueUpdate == null) {
                     trans2.last {
-                        value = valueUpdate
-                        lazyInitValue = null
-                        valueUpdate = null
+                        setupValue()
                     }
                 }
                 valueUpdate = newValue
             }
         }
+    }
+
+    protected open fun setupValue() {
+        value = valueUpdate
+        valueUpdate = null
     }
 
     /**

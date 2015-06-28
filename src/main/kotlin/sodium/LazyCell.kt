@@ -1,16 +1,18 @@
 package sodium
 
-open class LazyCell<A>(event: Stream<A>, lazyInitValue: Lazy<A>?) : Cell<A>(null, event) {
-    init {
-        this.lazyInitValue = lazyInitValue
-    }
-
+public open class LazyCell<A>(stream: Stream<A>, var lazyValue: Lazy<A>?) : Cell<A>(null, stream) {
     override fun sampleNoTrans(): A {
-        if (value == null && lazyInitValue != null) {
-            value = lazyInitValue!!.get()
-            lazyInitValue = null
+        val lazyValue = lazyValue
+        if (value == null && lazyValue != null) {
+            value = lazyValue.get()
+            this.lazyValue = null
         }
         return value
+    }
+
+    override fun setupValue() {
+        super.setupValue()
+        lazyValue = null
     }
 }
 
