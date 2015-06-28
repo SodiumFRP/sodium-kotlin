@@ -2,10 +2,12 @@ package sodium
 
 public open class StreamWithSend<A> : Stream<A>() {
     fun send(trans: Transaction, a: A) {
-        if (firings.isEmpty())
+        if (firings.isEmpty()) {
             trans.last {
                 firings.clear()
             }
+        }
+
         firings.add(a)
 
         val listeners = synchronized (Transaction.listenersLock) {
@@ -19,11 +21,9 @@ public open class StreamWithSend<A> : Stream<A>() {
                     // Don't allow transactions to interfere with Sodium
                     // internals.
                     // Dereference the weak reference
-                    val uta = target.action.get()
-                    if (uta != null) {
-                        // If it hasn't been gc'ed..., call it
-                        val handler = uta as TransactionHandler<A>
-                        handler(trans, a)
+                    val action = target.action.get()
+                    if (action != null) {
+                        action(trans, a)
                     }
                 } catch (t: Throwable) {
                     t.printStackTrace()

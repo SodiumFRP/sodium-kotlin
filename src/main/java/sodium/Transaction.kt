@@ -13,7 +13,7 @@ public class Transaction {
     private val lastQ = ArrayList<() -> Unit>()
     private val postQ = ArrayList<() -> Unit>()
 
-    public fun prioritized(node: Node, action: (Transaction) -> Unit) {
+    public fun prioritized(node: Node<*>, action: (Transaction) -> Unit) {
         val e = Entry(node, action)
         prioritizedQ.add(e)
         entries.add(e)
@@ -68,7 +68,7 @@ public class Transaction {
         postQ.clear()
     }
 
-	private class Entry(val node: Node, val action: (Transaction) -> Unit) : Comparable<Entry> {
+	private class Entry(val node: Node<*>, val action: (Transaction) -> Unit) : Comparable<Entry> {
 		private val seq: Long = nextSeq++
 
 		override fun compareTo(other: Entry): Int {
@@ -92,9 +92,9 @@ public class Transaction {
 
     companion object {
         // Coarse-grained lock that's held during the whole transaction.
-        public val transactionLock: Object = Object()
+        public val transactionLock: Any = Any()
         // Fine-grained lock that protects listeners and nodes.
-        val listenersLock = Object()
+        val listenersLock = Any()
 
         private var currentTransaction: Transaction? = null
         var inCallback: Int = 0

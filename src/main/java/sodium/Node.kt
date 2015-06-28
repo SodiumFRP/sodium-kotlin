@@ -3,25 +3,20 @@ package sodium
 import java.lang.ref.WeakReference
 import java.util.HashSet
 
-public class Node(private var rank: Long) : Comparable<Node> {
-
-    public class Target(action: TransactionHandler<*>?, val node: Node) {
-        val action = WeakReference(action)
-    }
-
-    val listeners = HashSet<Target>()
+public class Node<A>(private var rank: Long) : Comparable<Node<A>> {
+    val listeners = HashSet<Target<A>>()
 
     /**
      * @return true if any changes were made.
      */
-    fun linkTo(action: TransactionHandler<*>?, node: Node): Pair<Boolean, Target> {
+    fun linkTo(action: ((Transaction, A) -> Unit)?, node: Node<*>): Pair<Boolean, Target<A>> {
         val changed = node.ensureBiggerThan(rank)
-        val target = Target(action, node)
+        val target = Target<A>(action, node)
         listeners.add(target)
         return changed to target
     }
 
-    fun unlinkTo(target: Target) {
+    fun unlinkTo(target: Target<out A>) {
         listeners.remove(target)
     }
 
@@ -30,12 +25,15 @@ public class Node(private var rank: Long) : Comparable<Node> {
             return false
 
         rank = limit + 1
-        for (l in listeners)
-            l.node.ensureBiggerThan(rank)
+
+        for (listener in listeners) {
+            listener.node.ensureBiggerThan(rank)
+        }
+
         return true
     }
 
-    override fun compareTo(other: Node): Int {
+    override fun compareTo(other: Node<A>): Int {
         return when {
             rank < other.rank -> -1
             rank > other.rank -> 1
@@ -44,6 +42,10 @@ public class Node(private var rank: Long) : Comparable<Node> {
     }
 
     companion object {
-        public val NULL: Node = Node(Long.MAX_VALUE)
+        public val NULL: Node<Any> = Node(Long.MAX_VALUE)
+    }
+
+    public class Target<A>(action: ((Transaction, A) -> Unit)?, val node: Node<*>) {
+        val action = WeakReference(action)
     }
 }

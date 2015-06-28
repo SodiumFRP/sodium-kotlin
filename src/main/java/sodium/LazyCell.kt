@@ -1,6 +1,6 @@
 package sodium
 
-open class LazyCell<A>(event: Stream<A>, lazyInitValue: Lazy<A>) : Cell<A>(null, event) {
+open class LazyCell<A>(event: Stream<A>, lazyInitValue: Lazy<A>?) : Cell<A>(null, event) {
     init {
         this.lazyInitValue = lazyInitValue
     }

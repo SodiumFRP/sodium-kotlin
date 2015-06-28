@@ -13,11 +13,9 @@ public class StreamLoop<A> : StreamWithSend<A>() {
             throw RuntimeException("StreamLoop looped more than once")
         assigned = true
         val me = this
-        unsafeAddCleanup(ea_out.listen_(node, object : TransactionHandler<A> {
-            override fun run(trans: Transaction, a: A) {
-                me.send(trans, a)
-            }
-        }))
+        unsafeAddCleanup(ea_out.listen_(node) { trans, value ->
+            me.send(trans, value)
+        })
     }
 }
 

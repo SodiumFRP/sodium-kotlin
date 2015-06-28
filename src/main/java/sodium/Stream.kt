@@ -3,36 +3,35 @@ package sodium
 import java.util.ArrayList
 
 public open class Stream<A>(
-        val node: Node,
+        val node: Node<A>,
         val finalizers: MutableList<Listener>,
         val firings: MutableList<A>) {
 
     /**
      * An event that never fires.
      */
-    public constructor() : this(Node(0L), ArrayList<Listener>(), ArrayList<A>()) {
-    }
-
+    public constructor() : this(Node(0L), ArrayList<Listener>(), ArrayList<A>())
 
     /**
      * Listen for firings of this event. The returned Listener has an unlisten()
      * method to cause the listener to be removed. This is the observer pattern.
      */
     public fun listen(action: (A) -> Unit): Listener {
-        return listen_(Node.NULL, object : TransactionHandler<A> {
-            override fun invoke(trans2: Transaction, a: A) {
-                action(a)
+        return Transaction.apply2 {
+            listen(Node.NULL, it, false) { trans2, value ->
+                action(value)
             }
-        })
+        }
     }
 
-    fun listen_(target: Node, action: TransactionHandler<A>): Listener {
-        return Transaction.apply {
+    // TODO: remove
+    fun listen_(target: Node<*>, action: (Transaction, A) -> Unit): Listener {
+        return Transaction.apply2 {
             listen(target, it, false, action)
         }
     }
 
-    fun listen(target: Node, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, newValue: A) -> Unit): Listener {
+    fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, A) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             val (changed, nodeTarget) = node.linkTo(action, target)
             if (changed)
@@ -59,19 +58,17 @@ public open class Stream<A>(
                 }
             }
         }
-        return ListenerImplementation(this, action, nodeTarget)
+        return ListenerImplementation<A>(this, action, nodeTarget)
     }
 
     /**
      * Transform the event's value according to the supplied function.
      */
     public fun <B> map(transform: Function1<A, B>): Stream<B> {
-        val out = StreamSink<B>()
-        val l = listen_(out.node, object : TransactionHandler<A> {
-            override fun run(trans2: Transaction, a: A) {
-                out.send(trans2, transform(a))
-            }
-        })
+        val out = StreamWithSend<B>()
+        val l = listen_(out.node) { trans2, value ->
+            out.send(trans2, transform(value))
+        }
         return out.unsafeAddCleanup(l)
     }
 
@@ -113,12 +110,10 @@ public open class Stream<A>(
      * before any state changes of the current transaction are applied through 'hold's.
      */
     public fun <B, C> snapshot(b: Cell<B>, f: (A, B) -> C): Stream<C> {
-        val out = StreamSink<C>()
-        val l = listen_(out.node, object : TransactionHandler<A> {
-            override fun run(trans2: Transaction, a: A) {
-                out.send(trans2, f(a, b.sampleNoTrans()))
-            }
-        })
+        val out = StreamWithSend<C>()
+        val l = listen_(out.node) { trans2, a ->
+            out.send(trans2, f(a, b.sampleNoTrans()))
+        }
         return out.unsafeAddCleanup(l)
     }
 
@@ -141,18 +136,16 @@ public open class Stream<A>(
      */
     public fun defer(): Stream<A> {
         val out = StreamSink<A>()
-        val l1 = listen_(out.node, object : TransactionHandler<A> {
-            override fun invoke(trans: Transaction, a: A) {
-                trans.post {
-                    val newTrans = Transaction()
-                    try {
-                        out.send(newTrans, a)
-                    } finally {
-                        newTrans.close()
-                    }
+        val l1 = listen_(out.node) { trans, a ->
+            trans.post {
+                val newTrans = Transaction()
+                try {
+                    out.send(newTrans, a)
+                } finally {
+                    newTrans.close()
                 }
             }
-        })
+        }
         return out.unsafeAddCleanup(l1)
     }
 
@@ -190,7 +183,7 @@ public open class Stream<A>(
     /**
      * Merge two streams of events of the same type, combining simultaneous
      * event occurrences.
-
+     *
      * In the case where multiple event occurrences are simultaneous (i.e. all
      * within the same transaction), they are combined using the same logic as
      * 'coalesce'.
@@ -203,12 +196,12 @@ public open class Stream<A>(
      * Only keep event occurrences for which the predicate returns true.
      */
     public fun filter(f: Function1<A, Boolean>): Stream<A> {
-        val out = StreamSink<A>()
-        val l = listen_(out.node, object : TransactionHandler<A> {
-            override fun run(trans2: Transaction, a: A) {
-                if (f.invoke(a)) out.send(trans2, a)
+        val out = StreamWithSend<A>()
+        val l = listen_(out.node) { trans2, a ->
+            if (f.invoke(a)) {
+                out.send(trans2, a)
             }
-        })
+        }
         return out.unsafeAddCleanup(l)
     }
 
@@ -306,16 +299,14 @@ public open class Stream<A>(
         // the listener.
         val la = arrayOfNulls<Listener>(1)
         val out = StreamSink<A>()
-        la[0] = listen_(out.node, object : TransactionHandler<A> {
-            override fun run(trans: Transaction, a: A) {
-                val listener = la[0]
-                if (listener != null) {
-                    out.send(trans, a)
-                    listener.unlisten()
-                    la[0] = null
-                }
+        la[0] = listen_(out.node) { trans, a ->
+            val listener = la[0]
+            if (listener != null) {
+                out.send(trans, a)
+                listener.unlisten()
+                la[0] = null
             }
-        })
+        }
         val listener = la[0]
         return if (listener == null) this else out.unsafeAddCleanup(listener)
     }
@@ -340,7 +331,7 @@ public open class Stream<A>(
 
         /**
          * Merge two streams of events of the same type.
-
+         *
          * In the case where two event occurrences are simultaneous (i.e. both
          * within the same transaction), both will be delivered in the same
          * transaction. If the event firings are ordered for some reason, then
@@ -348,14 +339,12 @@ public open class Stream<A>(
          * be undefined.
          */
         private fun <A> merge(ea: Stream<A>, eb: Stream<A>): Stream<A> {
-            val out = StreamSink<A>()
-            val left = Node(0)
+            val out = StreamWithSend<A>()
+            val left = Node<A>(0)
             val right = out.node
             val (changed, node_target) = left.linkTo(null, right)
-            val h = object : TransactionHandler<A> {
-                override fun run(trans: Transaction, a: A) {
-                    out.send(trans, a)
-                }
+            val h = { trans: Transaction, a: A ->
+                out.send(trans, a)
             }
             val l1 = ea.listen_(left, h)
             val l2 = eb.listen_(right, h)
@@ -371,20 +360,18 @@ public open class Stream<A>(
          */
         public fun <A, C : Collection<A>> split(s: Stream<C>): Stream<A> {
             val out = StreamSink<A>()
-            val listener = s.listen_(out.node, object : TransactionHandler<C> {
-                override fun invoke(trans: Transaction, events: C) {
-                    trans.post {
-                        for (event in events) {
-                            val newTransaction = Transaction()
-                            try {
-                                out.send(newTransaction, event)
-                            } finally {
-                                newTransaction.close()
-                            }
+            val listener = s.listen_(out.node) { trans, events ->
+                trans.post {
+                    for (event in events) {
+                        val newTransaction = Transaction()
+                        try {
+                            out.send(newTransaction, event)
+                        } finally {
+                            newTransaction.close()
                         }
                     }
                 }
-            })
+            }
             return out.unsafeAddCleanup(listener)
         }
     }
@@ -400,8 +387,8 @@ class ListenerImplementation<A>(
          * It's also essential that we keep the action alive, since the node uses
          * a weak reference.
          */
-        private var action: TransactionHandler<A>?,
-        private var target: Node.Target?) : Listener() {
+        private var action: ((Transaction, A) -> Unit)?,
+        private var target: Node.Target<A>?) : Listener() {
 
     override fun unlisten() {
         synchronized (Transaction.listenersLock) {
@@ -417,7 +404,7 @@ class ListenerImplementation<A>(
     }
 }
 
-class CoalesceHandler<A>(private val f: Function2<A, A, A>, private val out: StreamSink<A>) : TransactionHandler<A> {
+class CoalesceHandler<A>(private val f: Function2<A, A, A>, private val out: StreamSink<A>) : (Transaction, A) -> Unit {
     private var accumValid: Boolean = false
     private var accum: A = null
 
