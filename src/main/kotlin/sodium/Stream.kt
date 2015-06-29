@@ -39,8 +39,8 @@ public open class Stream<A>(
             nodeTarget
         }
 
-        val firings = ArrayList(this.firings)
         if (!suppressEarlierFirings && !firings.isEmpty()) {
+            val firings = ArrayList(firings)
             trans.prioritized(target) {
                 // Anything sent already in this transaction must be sent now so that
                 // there's no order dependency between send and listen.
@@ -49,9 +49,7 @@ public open class Stream<A>(
                     try {
                         // Don't allow transactions to interfere with Sodium
                         // internals.
-                        action(trans, a)
-                    } catch (t: Throwable) {
-                        t.printStackTrace()
+                        action(it, a)
                     } finally {
                         Transaction.inCallback--
                     }
@@ -64,7 +62,7 @@ public open class Stream<A>(
     /**
      * Transform the event's value according to the supplied function.
      */
-    public fun <B> map(transform: Function1<A, B>): Stream<B> {
+    public fun <B> map(transform: (A) -> B): Stream<B> {
         val out = StreamWithSend<B>()
         val l = listen_(out.node) { trans2, value ->
             out.send(trans2, transform(value))
@@ -80,13 +78,13 @@ public open class Stream<A>(
      * the transaction.
      */
     public fun hold(initValue: A): Cell<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             Cell(initValue, lastFiringOnly(it))
         }
     }
 
     public fun holdLazy(initValue: Lazy<A>): Cell<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             holdLazy(it, initValue)
         }
     }
@@ -159,7 +157,7 @@ public open class Stream<A>(
      * ideally be commutative.
      */
     public fun coalesce(f: (A, A) -> A): Stream<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             coalesce(it, f)
         }
     }
@@ -188,17 +186,17 @@ public open class Stream<A>(
      * within the same transaction), they are combined using the same logic as
      * 'coalesce'.
      */
-    public fun merge(stream: Stream<A>, combine: Function2<A, A, A>): Stream<A> {
+    public fun merge(stream: Stream<A>, combine: (A, A) -> A): Stream<A> {
         return merge(stream).coalesce(combine)
     }
 
     /**
      * Only keep event occurrences for which the predicate returns true.
      */
-    public fun filter(f: Function1<A, Boolean>): Stream<A> {
+    public fun filter(f: (A) -> Boolean): Stream<A> {
         val out = StreamWithSend<A>()
         val l = listen_(out.node) { trans2, a ->
-            if (f.invoke(a)) {
+            if (f(a)) {
                 out.send(trans2, a)
             }
         }
@@ -213,21 +211,6 @@ public open class Stream<A>(
             it != null
         }
     }
-
-    /**
-     * Filter the empty values out, and strip the Optional wrapper from the present ones.
-     */
-    //    public static <A> Stream<A> filterOptional(final Stream<Optional<A>> ev)
-    //    {
-    //        final StreamSink<A> out = new StreamSink<A>();
-    //        final Listener l = ev.listen_(out.node, new TransactionHandler<Optional<A>>() {
-    //        	@Override
-    //            public void run(final Transaction trans2, final Optional<A> oa) {
-    //	            if (oa.isPresent()) out.send(trans2, oa.get());
-    //	        }
-    //        });
-    //        return out.unsafeAddCleanup(l);
-    //    }
 
     /**
      * Let event occurrences through only when the behavior's value is True.
@@ -253,11 +236,10 @@ public open class Stream<A>(
      * is passed the input and the old state and returns the new state and output value.
      */
     public fun <B, S> collectLazy(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Stream<B> {
-        return Transaction.apply {
-            val ea = this@Stream
+        return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
-            val ebs = ea.snapshot(s, f)
+            val ebs = snapshot(s, f)
             val eb = ebs.map {
                 it.first
             }
@@ -281,7 +263,7 @@ public open class Stream<A>(
      * Variant that takes a lazy initial state.
      */
     public fun <S> accumLazy(initState: Lazy<S>, f: (A, S) -> S): Cell<S> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             val ea = this@Stream
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
@@ -404,15 +386,15 @@ class ListenerImplementation<A>(
     }
 }
 
-class CoalesceHandler<A>(private val f: Function2<A, A, A>, private val out: StreamSink<A>) : (Transaction, A) -> Unit {
+class CoalesceHandler<A>(private val f: (A, A) -> A, private val out: StreamSink<A>) : (Transaction, A) -> Unit {
     private var accumValid: Boolean = false
     private var accum: A = null
 
-    override fun invoke(trans1: Transaction, a: A) {
+    override fun invoke(transaction: Transaction, a: A) {
         if (accumValid) {
             accum = f(accum, a)
         } else {
-            trans1.prioritized(out.node) {
+            transaction.prioritized(out.node) {
                 out.send(it, accum)
                 accumValid = false
                 accum = null

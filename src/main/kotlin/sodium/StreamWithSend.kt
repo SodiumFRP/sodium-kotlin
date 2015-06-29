@@ -23,10 +23,8 @@ public open class StreamWithSend<A> : Stream<A>() {
                     // Dereference the weak reference
                     val action = target.action.get()
                     if (action != null) {
-                        action(trans, a)
+                        action(it, a)
                     }
-                } catch (t: Throwable) {
-                    t.printStackTrace()
                 } finally {
                     Transaction.inCallback--
                 }

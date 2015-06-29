@@ -10,7 +10,7 @@ public object Operational {
      * that do not allow the caller to detect the cell updates.
      */
     public fun <A> updates(c: Cell<A>): Stream<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             c.updates(it)
         }
     }
@@ -26,7 +26,7 @@ public object Operational {
      * that do not allow the caller to detect the cell updates.
      */
     public fun <A> value(c: Cell<A>): Stream<A> {
-        return Transaction.apply {
+        return Transaction.apply2 {
             c.value(it)
         }
     }

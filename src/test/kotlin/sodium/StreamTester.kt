@@ -65,13 +65,13 @@ public class StreamTester : TestCase() {
         val l = e1.merge(e2).listen {
             out.add(it)
         }
-        Transaction.apply {
+        Transaction.apply2 {
             e1.send("left1a")
             e1.send("left1b")
             e2.send("right1a")
             e2.send("right1b")
         }
-        Transaction.apply {
+        Transaction.apply2 {
             e2.send("right2a")
             e2.send("right2b")
             e1.send("left2a")
@@ -122,7 +122,7 @@ public class StreamTester : TestCase() {
 
     public fun testLoopStream() {
         val ea = StreamSink<Int>()
-        val ec = Transaction.apply {
+        val ec = Transaction.apply2 {
             val eb = StreamLoop<Int>()
             val ec = ea.map { it % 10 }.merge(eb) { x, y -> x + y }
             val eb_out = ea.map { it / 10 }.filter { it != 0 }

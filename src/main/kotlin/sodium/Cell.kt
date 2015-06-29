@@ -6,9 +6,9 @@ public open class Cell<A> jvmOverloads public constructor(var value: A, protecte
 
     init {
         Transaction.apply2 {
-            listener = stream.listen(Node.NULL, it, false) { trans2, newValue ->
+            listener = stream.listen(Node.NULL, it, false) { trans, newValue ->
                 if (valueUpdate == null) {
-                    trans2.last {
+                    trans.last {
                         setupValue()
                     }
                 }
@@ -90,7 +90,7 @@ public open class Cell<A> jvmOverloads public constructor(var value: A, protecte
     /**
      * Transform the cell's value according to the supplied function.
      */
-    public fun <B> map(f: Function1<A, B>): Cell<B> {
+    public fun <B> map(f: (A) -> B): Cell<B> {
         return Transaction.apply2 {
             updates(it).map(f).holdLazy(it, sampleLazy(it).map(f))
         }
@@ -100,7 +100,7 @@ public open class Cell<A> jvmOverloads public constructor(var value: A, protecte
      * Transform a cell with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    public fun <B, S> collect(initState: S, f: Function2<A, S, Pair<B, S>>): Cell<B> {
+    public fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): Cell<B> {
         return collect(Lazy(initState), f)
     }
 
@@ -109,7 +109,7 @@ public open class Cell<A> jvmOverloads public constructor(var value: A, protecte
      * is passed the input and the old state and returns the new state and output value.
      * Variant that takes a lazy initial state.
      */
-    public fun <B, S> collect(initState: Lazy<S>, f: Function2<A, S, Pair<B, S>>): Cell<B> {
+    public fun <B, S> collect(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Cell<B> {
         return Transaction.apply2 {
             val ea = updates(it).coalesce { fst, snd ->
                 snd
@@ -137,7 +137,7 @@ public open class Cell<A> jvmOverloads public constructor(var value: A, protecte
      * method to cause the listener to be removed. This is the observer pattern.
      */
     public fun listen(action: (A) -> Unit): Listener {
-        return Transaction.apply {
+        return Transaction.apply2 {
             value(it).listen(action)
         }
     }
