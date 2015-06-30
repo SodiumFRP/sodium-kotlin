@@ -21,7 +21,7 @@ class ListenerImplementation<A>(
             val stream = event
             val node = target
             if (stream != null && node != null) {
-                stream.node.unlinkTo(node)
+                stream.node.unlink(node)
                 event = null
                 action = null
                 target = null

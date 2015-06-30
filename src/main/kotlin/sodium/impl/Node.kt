@@ -4,20 +4,20 @@ import sodium.Transaction
 import java.lang.ref.WeakReference
 import java.util.HashSet
 
-public class Node<A>(private var rank: Long) : Comparable<Node<A>> {
+public class Node<A>(private var rank: Long) : Comparable<Node<*>> {
     val listeners = HashSet<Target<A>>()
 
     /**
      * @return true if any changes were made.
      */
-    fun linkTo(action: ((Transaction, A) -> Unit)?, node: Node<*>): Pair<Boolean, Target<A>> {
+    fun link(node: Node<*>, action: ((Transaction, A) -> Unit)?): Pair<Boolean, Target<A>> {
         val changed = node.ensureBiggerThan(rank)
         val target = Target<A>(action, node)
         listeners.add(target)
         return changed to target
     }
 
-    fun unlinkTo(target: Target<out A>) {
+    fun unlink(target: Target<out A>) {
         listeners.remove(target)
     }
 
@@ -34,7 +34,7 @@ public class Node<A>(private var rank: Long) : Comparable<Node<A>> {
         return true
     }
 
-    override fun compareTo(other: Node<A>): Int {
+    override fun compareTo(other: Node<*>): Int {
         return when {
             rank < other.rank -> -1
             rank > other.rank -> 1

@@ -1,7 +1,9 @@
 package sodium.impl
 
+import sodium.Transaction
+
 public open class StreamWithSend<A> : StreamImpl<A>() {
-    fun send(trans: sodium.Transaction, a: A) {
+    fun send(trans: Transaction, a: A) {
         if (firings.isEmpty()) {
             trans.last {
                 firings.clear()
@@ -10,13 +12,13 @@ public open class StreamWithSend<A> : StreamImpl<A>() {
 
         firings.add(a)
 
-        val listeners = synchronized (sodium.Transaction.listenersLock) {
+        val listeners = synchronized (Transaction.listenersLock) {
             node.listeners.toTypedArray()
         }
 
         for (target in listeners) {
             trans.prioritized(target.node) {
-                sodium.Transaction.inCallback++
+                Transaction.inCallback++
                 try {
                     // Don't allow transactions to interfere with Sodium
                     // internals.
@@ -26,7 +28,7 @@ public open class StreamWithSend<A> : StreamImpl<A>() {
                         action(it, a)
                     }
                 } finally {
-                    sodium.Transaction.inCallback--
+                    Transaction.inCallback--
                 }
             }
         }

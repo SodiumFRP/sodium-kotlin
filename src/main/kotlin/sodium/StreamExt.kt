@@ -36,7 +36,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     val out = sodium.impl.StreamWithSend<A>()
     val left = Node<A>(0)
     val right = out.node
-    val (changed, node_target) = left.linkTo(null, right)
+    val (changed, node_target) = left.link(right, null)
     val handler = { trans: Transaction, value: A ->
         out.send(trans, value)
     }
@@ -48,7 +48,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
 
     return out.unsafeAddCleanup(object : Listener {
         override fun unlisten() {
-            left.unlinkTo(node_target)
+            left.unlink(node_target)
         }
     })
 }

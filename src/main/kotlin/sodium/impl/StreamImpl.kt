@@ -24,7 +24,7 @@ public open class StreamImpl<A>(
 
     fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, A) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
-            val (changed, nodeTarget) = node.linkTo(action, target)
+            val (changed, nodeTarget) = node.link(target, action)
             if (changed)
                 trans.toRegen = true
             nodeTarget
@@ -51,7 +51,7 @@ public open class StreamImpl<A>(
     }
 
     override fun <B> map(transform: (A) -> B): StreamImpl<B> {
-        val out = sodium.impl.StreamWithSend<B>()
+        val out = StreamWithSend<B>()
         val l = Transaction.apply2 {
             listen(out.node, it, false) { trans2, value ->
                 out.send(trans2, transform(value))
@@ -72,7 +72,7 @@ public open class StreamImpl<A>(
     }
 
     override fun <B, C> snapshot(b: Cell<B>, transform: (A, B) -> C): StreamImpl<C> {
-        val out = sodium.impl.StreamWithSend<C>()
+        val out = StreamWithSend<C>()
         val listener = Transaction.apply2 {
             listen(out.node, it, false) { trans2, a ->
                 out.send(trans2, transform(a, (b as CellImpl<B>).sampleNoTrans()))
@@ -127,7 +127,7 @@ public open class StreamImpl<A>(
     }
 
     override fun filter(f: (A) -> Boolean): StreamImpl<A> {
-        val out = sodium.impl.StreamWithSend<A>()
+        val out = StreamWithSend<A>()
         val l = Transaction.apply2 {
             listen(out.node, it, false) { trans2, a ->
                 if (f(a)) {
