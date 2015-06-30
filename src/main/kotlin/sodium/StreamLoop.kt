@@ -1,6 +1,8 @@
 package sodium
 
-public class StreamLoop<A> : StreamWithSend<A>() {
+import sodium.impl.StreamImpl
+
+public class StreamLoop<A> : sodium.impl.StreamWithSend<A>() {
     var assigned: Boolean = false
 
     init {
@@ -13,7 +15,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
             throw AssertionError("StreamLoop looped more than once")
         assigned = true
         val listener = Transaction.apply2 {
-            ea_out.listen(node, it, false) { trans, value ->
+            (ea_out as StreamImpl<A>).listen(node, it, false) { trans, value ->
                 send(trans, value)
             }
         }

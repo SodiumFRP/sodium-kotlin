@@ -1,5 +1,7 @@
 package sodium
 
+import sodium.impl.CellImpl
+
 public object Operational {
     /**
      * A stream that gives the updates for the cell.
@@ -11,7 +13,7 @@ public object Operational {
      */
     public fun <A> updates(c: Cell<A>): Stream<A> {
         return Transaction.apply2 {
-            c.updates(it)
+            (c as CellImpl<A>).updates(it)
         }
     }
 
@@ -27,7 +29,7 @@ public object Operational {
      */
     public fun <A> value(c: Cell<A>): Stream<A> {
         return Transaction.apply2 {
-            c.value(it)
+            (c as CellImpl<A>).value(it)
         }
     }
 }

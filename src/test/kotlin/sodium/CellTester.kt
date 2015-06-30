@@ -44,7 +44,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testConstantBehavior() {
-        val b = Cell(12)
+        val b = Sodium.cell(12)
         val out = ArrayList<Int>()
         val l = b.listen { out.add(it) }
         l.unlisten()

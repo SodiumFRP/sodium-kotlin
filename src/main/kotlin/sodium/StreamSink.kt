@@ -1,6 +1,6 @@
 package sodium
 
-public class StreamSink<A> : StreamWithSend<A>() {
+public class StreamSink<A> : sodium.impl.StreamWithSend<A>() {
 
     public fun send(a: A) {
         Transaction.apply2 {

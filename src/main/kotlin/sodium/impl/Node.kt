@@ -1,5 +1,6 @@
-package sodium
+package sodium.impl
 
+import sodium.Transaction
 import java.lang.ref.WeakReference
 import java.util.HashSet
 

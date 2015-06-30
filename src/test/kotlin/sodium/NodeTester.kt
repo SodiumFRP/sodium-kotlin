@@ -1,6 +1,7 @@
 package sodium
 
 import junit.framework.TestCase
+import sodium.impl.Node
 
 public class NodeTester : TestCase() {
     public fun testNode() {

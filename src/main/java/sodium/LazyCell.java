@@ -1,7 +1,9 @@
 package sodium;
 
+import sodium.impl.CellImpl;
+
 // TODO: kotlin version of this class not generates super() call coz of bug.
-public class LazyCell<A> extends Cell<A> {
+public class LazyCell<A> extends CellImpl<A> {
 
     Lazy<A> lazyValue;
 
