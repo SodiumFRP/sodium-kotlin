@@ -46,7 +46,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
         out.unsafeAddCleanup(l1).unsafeAddCleanup(l2)
     }
 
-    return out.unsafeAddCleanup(object : Listener() {
+    return out.unsafeAddCleanup(object : Listener {
         override fun unlisten() {
             left.unlinkTo(node_target)
         }
