@@ -12,9 +12,12 @@ public class StreamLoop<A> : StreamWithSend<A>() {
         if (assigned)
             throw AssertionError("StreamLoop looped more than once")
         assigned = true
-        unsafeAddCleanup(ea_out.listen_(node) { trans, value ->
-            send(trans, value)
-        })
+        val listener = Transaction.apply2 {
+            ea_out.listen(node, it, false) { trans, value ->
+                send(trans, value)
+            }
+        }
+        unsafeAddCleanup(listener)
     }
 }
 

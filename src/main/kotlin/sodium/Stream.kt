@@ -24,13 +24,6 @@ public open class Stream<A>(
         }
     }
 
-    // TODO: remove
-    fun listen_(target: Node<*>, action: (Transaction, A) -> Unit): Listener {
-        return Transaction.apply2 {
-            listen(target, it, false, action)
-        }
-    }
-
     fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, A) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             val (changed, nodeTarget) = node.linkTo(action, target)
@@ -64,9 +57,12 @@ public open class Stream<A>(
      */
     public fun <B> map(transform: (A) -> B): Stream<B> {
         val out = StreamWithSend<B>()
-        val l = listen_(out.node) { trans2, value ->
-            out.send(trans2, transform(value))
+        val l = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, value ->
+                out.send(trans2, transform(value))
+            }
         }
+
         return out.unsafeAddCleanup(l)
     }
 
@@ -107,10 +103,12 @@ public open class Stream<A>(
      * of the behavior that's sampled is the value as at the start of the transaction
      * before any state changes of the current transaction are applied through 'hold's.
      */
-    public fun <B, C> snapshot(b: Cell<B>, f: (A, B) -> C): Stream<C> {
+    public fun <B, C> snapshot(b: Cell<B>, transform: (A, B) -> C): Stream<C> {
         val out = StreamWithSend<C>()
-        val l = listen_(out.node) { trans2, a ->
-            out.send(trans2, f(a, b.sampleNoTrans()))
+        val l = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, a ->
+                out.send(trans2, transform(a, b.sampleNoTrans()))
+            }
         }
         return out.unsafeAddCleanup(l)
     }
@@ -134,13 +132,15 @@ public open class Stream<A>(
      */
     public fun defer(): Stream<A> {
         val out = StreamSink<A>()
-        val l1 = listen_(out.node) { trans, a ->
-            trans.post {
-                val newTrans = Transaction()
-                try {
-                    out.send(newTrans, a)
-                } finally {
-                    newTrans.close()
+        val l1 = Transaction.apply2 {
+            listen(out.node, it, false) { trans, a ->
+                trans.post {
+                    val newTrans = Transaction()
+                    try {
+                        out.send(newTrans, a)
+                    } finally {
+                        newTrans.close()
+                    }
                 }
             }
         }
@@ -195,9 +195,11 @@ public open class Stream<A>(
      */
     public fun filter(f: (A) -> Boolean): Stream<A> {
         val out = StreamWithSend<A>()
-        val l = listen_(out.node) { trans2, a ->
-            if (f(a)) {
-                out.send(trans2, a)
+        val l = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, a ->
+                if (f(a)) {
+                    out.send(trans2, a)
+                }
             }
         }
         return out.unsafeAddCleanup(l)
@@ -281,12 +283,14 @@ public open class Stream<A>(
         // the listener.
         val la = arrayOfNulls<Listener>(1)
         val out = StreamSink<A>()
-        la[0] = listen_(out.node) { trans, a ->
-            val listener = la[0]
-            if (listener != null) {
-                out.send(trans, a)
-                listener.unlisten()
-                la[0] = null
+        la[0] = Transaction.apply2 {
+            listen(out.node, it, false) { trans, a ->
+                val listener = la[0]
+                if (listener != null) {
+                    out.send(trans, a)
+                    listener.unlisten()
+                    la[0] = null
+                }
             }
         }
         val listener = la[0]
@@ -325,12 +329,16 @@ public open class Stream<A>(
             val left = Node<A>(0)
             val right = out.node
             val (changed, node_target) = left.linkTo(null, right)
-            val h = { trans: Transaction, a: A ->
-                out.send(trans, a)
+            val handler = { trans: Transaction, value: A ->
+                out.send(trans, value)
             }
-            val l1 = ea.listen_(left, h)
-            val l2 = eb.listen_(right, h)
-            return out.unsafeAddCleanup(l1).unsafeAddCleanup(l2).unsafeAddCleanup(object : Listener() {
+            Transaction.apply2 {
+                val l1 = ea.listen(left, it, false, handler)
+                val l2 = eb.listen(right, it, false, handler)
+                out.unsafeAddCleanup(l1).unsafeAddCleanup(l2)
+            }
+
+            return out.unsafeAddCleanup(object : Listener() {
                 override fun unlisten() {
                     left.unlinkTo(node_target)
                 }
@@ -342,14 +350,16 @@ public open class Stream<A>(
          */
         public fun <A, C : Collection<A>> split(s: Stream<C>): Stream<A> {
             val out = StreamSink<A>()
-            val listener = s.listen_(out.node) { trans, events ->
-                trans.post {
-                    for (event in events) {
-                        val newTransaction = Transaction()
-                        try {
-                            out.send(newTransaction, event)
-                        } finally {
-                            newTransaction.close()
+            val listener = Transaction.apply2 {
+                s.listen(out.node, it, false) { trans, events ->
+                    trans.post {
+                        for (event in events) {
+                            val newTransaction = Transaction()
+                            try {
+                                out.send(newTransaction, event)
+                            } finally {
+                                newTransaction.close()
+                            }
                         }
                     }
                 }
