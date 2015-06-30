@@ -3,6 +3,7 @@ package sodium
 import sodium.impl.CellImpl
 import sodium.impl.Node
 import sodium.impl.StreamImpl
+import sodium.impl.StreamWithSend
 
 /**
  * If there's more than one firing in a single transaction, combine them into
@@ -89,7 +90,7 @@ public fun <A> Stream<A>.holdLazy(initValue: Lazy<A>): Cell<A> {
  * Push each event occurrence in the list onto a new transaction.
  */
 public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
-    val out = StreamSink<A>()
+    val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<C>
     val listener = Transaction.apply2 {
         thiz.listen(out.node, it, false) { trans, events ->

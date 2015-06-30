@@ -6,7 +6,7 @@ import java.util.Arrays
 
 public class StreamTester : TestCase() {
     public fun testSendStream() {
-        val e = StreamSink<Int>()
+        val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e.listen {
             out.add(it)
@@ -19,7 +19,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testMap() {
-        val e = StreamSink<Int>()
+        val e = Sodium.streamSink<Int>()
         val m = e.map {
             it.toString()
         }
@@ -33,8 +33,8 @@ public class StreamTester : TestCase() {
     }
 
     public fun testMergeNonSimultaneous() {
-        val e1 = StreamSink<Int>()
-        val e2 = StreamSink<Int>()
+        val e1 = Sodium.streamSink<Int>()
+        val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e1.merge(e2).listen {
             out.add(it)
@@ -47,7 +47,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testMergeSimultaneous() {
-        val e = StreamSink<Int>()
+        val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e.merge(e).listen {
             out.add(it)
@@ -59,8 +59,8 @@ public class StreamTester : TestCase() {
     }
 
     public fun testMergeLeftBias() {
-        val e1 = StreamSink<String>()
-        val e2 = StreamSink<String>()
+        val e1 = Sodium.streamSink<String>()
+        val e2 = Sodium.streamSink<String>()
         val out = ArrayList<String>()
         val l = e1.merge(e2).listen {
             out.add(it)
@@ -84,8 +84,8 @@ public class StreamTester : TestCase() {
     }
 
     public fun testCoalesce() {
-        val e1 = StreamSink<Int>()
-        val e2 = StreamSink<Int>()
+        val e1 = Sodium.streamSink<Int>()
+        val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e1
                 .merge(e1.map { it * 100 }.merge(e2))
@@ -99,7 +99,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testFilter() {
-        val e = StreamSink<Char>()
+        val e = Sodium.streamSink<Char>()
         val out = ArrayList<Char>()
         val l = e.filter { it.isUpperCase() }.listen { out.add(it) }
         e.send('H')
@@ -110,7 +110,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testFilterNotNull() {
-        val e = StreamSink<String?>()
+        val e = Sodium.streamSink<String?>()
         val out = ArrayList<String>()
         val l = e.filterNotNull().listen { out.add(it) }
         e.send("tomato")
@@ -121,7 +121,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testLoopStream() {
-        val ea = StreamSink<Int>()
+        val ea = Sodium.streamSink<Int>()
         val ec = Transaction.apply2 {
             val eb = StreamLoop<Int>()
             val ec = ea.map { it % 10 }.merge(eb) { x, y -> x + y }
@@ -138,8 +138,8 @@ public class StreamTester : TestCase() {
     }
 
     public fun testGate() {
-        val ec = StreamSink<Char>()
-        val epred = CellSink(true)
+        val ec = Sodium.streamSink<Char>()
+        val epred = Sodium.cellSink(true)
         val out = ArrayList<Char>()
         val l = ec.gate(epred).listen { out.add(it) }
         ec.send('H')
@@ -152,7 +152,7 @@ public class StreamTester : TestCase() {
     }
 
     public fun testCollect() {
-        val ea = StreamSink<Int>()
+        val ea = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val sum = ea.collect(100) { a, s ->
             a + s to a + s

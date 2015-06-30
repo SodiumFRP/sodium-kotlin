@@ -1,9 +1,8 @@
 package sodium.impl
 
-import sodium.StreamSink
 import sodium.Transaction
 
-class CoalesceHandler<A>(private val f: (A, A) -> A, private val out: StreamSink<A>) : (Transaction, A) -> Unit {
+class CoalesceHandler<A>(private val f: (A, A) -> A, private val out: StreamWithSend<A>) : (Transaction, A) -> Unit {
     private var accumValid: Boolean = false
     private var accum: A = null
 

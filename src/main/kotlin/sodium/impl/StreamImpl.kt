@@ -86,7 +86,7 @@ public open class StreamImpl<A>(
      * on a single value.
      */
     override fun defer(): StreamImpl<A> {
-        val out = StreamSink<A>()
+        val out = StreamWithSend<A>()
         val l1 = Transaction.apply2 {
             listen(out.node, it, false) { trans, a ->
                 trans.post {
@@ -103,7 +103,7 @@ public open class StreamImpl<A>(
     }
 
     fun coalesce(transaction: Transaction, combine: (A, A) -> A): StreamImpl<A> {
-        val out = StreamSink<A>()
+        val out = StreamWithSend<A>()
         val handler = CoalesceHandler(combine, out)
         val listener = listen(out.node, transaction, false, handler)
         return out.unsafeAddCleanup(listener)
@@ -117,7 +117,7 @@ public open class StreamImpl<A>(
 //            second
 //        }
 
-        val out = StreamSink<A>()
+        val out = StreamWithSend<A>()
         val listener = listen(out.node, trans, false) { transaction, value ->
             transaction.prioritized(out.node) {
                 out.send(it, firings.last())
@@ -188,7 +188,7 @@ public open class StreamImpl<A>(
         // This is a bit long-winded but it's efficient because it deregisters
         // the listener.
         val la = arrayOfNulls<Listener>(1)
-        val out = StreamSink<A>()
+        val out = StreamWithSend<A>()
         la[0] = Transaction.apply2 {
             listen(out.node, it, false) { trans, a ->
                 val listener = la[0]

@@ -68,7 +68,7 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
     }
 
     fun value(trans1: Transaction): Stream<A> {
-        val sSpark = StreamSink<Unit>()
+        val sSpark = StreamWithSend<Unit>()
         trans1.prioritized(sSpark.node) {
             sSpark.send(it, Unit)
         }

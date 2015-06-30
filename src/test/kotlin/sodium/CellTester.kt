@@ -6,7 +6,7 @@ import java.util.Arrays
 
 public class CellTester : TestCase() {
     public fun testHold() {
-        val e = StreamSink<Int>()
+        val e = Sodium.streamSink<Int>()
         val b = e.hold(0)
         val out = ArrayList<Int>()
         val l = Operational.updates(b).listen { out.add(it) }
@@ -17,8 +17,8 @@ public class CellTester : TestCase() {
     }
 
     public fun testSnapshot() {
-        val b = CellSink(0)
-        val trigger = StreamSink<Long>()
+        val b = Sodium.cellSink(0)
+        val trigger = Sodium.streamSink<Long>()
         val out = ArrayList<String>()
         val l = trigger.snapshot(b) { x, y ->
             "$x $y"
@@ -34,7 +34,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testValues() {
-        val b = CellSink(9)
+        val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = b.listen { out.add(it) }
         b.send(2)
@@ -52,7 +52,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testValueThenMap() {
-        val b = CellSink(9)
+        val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
             Operational.value(b).map { it + 100 }.listen { out.add(it) }
@@ -74,7 +74,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testValuesTwiceThenMap() {
-        val b = CellSink(9)
+        val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
             doubleUp(Operational.value(b)).map { it + 100 }.listen { out.add(it) }
@@ -86,7 +86,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testValuesThenCoalesce() {
-        val b = CellSink(9)
+        val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
             Operational.value(b).coalesce { fst, snd ->
@@ -100,8 +100,8 @@ public class CellTester : TestCase() {
     }
 
     public fun testValuesThenSnapshot() {
-        val bi = CellSink(9)
-        val bc = CellSink('a')
+        val bi = Sodium.cellSink(9)
+        val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
             Operational.value(bi).snapshot(bc).listen { out.add(it) }
@@ -115,8 +115,8 @@ public class CellTester : TestCase() {
     }
 
     public fun testValuesTwiceThenSnapshot() {
-        val bi = CellSink(9)
-        val bc = CellSink('a')
+        val bi = Sodium.cellSink(9)
+        val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
             doubleUp(Operational.value(bi)).snapshot(bc).listen { out.add(it) }
