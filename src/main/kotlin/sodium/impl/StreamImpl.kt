@@ -113,9 +113,17 @@ public open class StreamImpl<A>(
      * Clean up the output by discarding any firing other than the last one.
      */
     fun lastFiringOnly(trans: Transaction): StreamImpl<A> {
-        return coalesce(trans) {first, second ->
-            second
+//        return coalesce(trans) {first, second ->
+//            second
+//        }
+
+        val out = StreamSink<A>()
+        val listener = listen(out.node, trans, false) { transaction, value ->
+            transaction.prioritized(out.node) {
+                out.send(it, firings.last())
+            }
         }
+        return out.unsafeAddCleanup(listener)
     }
 
     override fun filter(f: (A) -> Boolean): StreamImpl<A> {
