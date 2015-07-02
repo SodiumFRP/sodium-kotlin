@@ -167,4 +167,43 @@ public class StreamTester : TestCase() {
         l.unlisten()
         TestCase.assertEquals(Arrays.asList(105, 112, 113, 115, 118), out)
     }
+
+    public fun testAccum() {
+        val ea = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        val sum = ea.accum(100) { a, s ->
+            a + s
+        }
+        val l = sum.listen { out.add(it) }
+        ea.send(5)
+        ea.send(7)
+        ea.send(1)
+        ea.send(2)
+        ea.send(3)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(100, 105, 112, 113, 115, 118), out)
+    }
+
+    public fun testOnce() {
+        val e = Sodium.streamSink<Char>()
+        val out = ArrayList<Char>()
+        val l = e.once().listen { out.add(it) }
+        e.send('A')
+        e.send('B')
+        e.send('C')
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList('A'), out)
+    }
+
+    public fun testDefer() {
+        val e = Sodium.streamSink<Char>()
+        val b = e.hold(' ')
+        val out = ArrayList<Char>()
+        val l = e.defer().snapshot(b).listen { out.add(it) }
+        e.send('C')
+        e.send('B')
+        e.send('A')
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList('C', 'B', 'A'), out)
+    }
 }
