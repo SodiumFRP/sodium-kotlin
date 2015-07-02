@@ -17,12 +17,12 @@ public interface Cell<A> {
     /**
      * A variant of sample() that works for CellLoops when they haven't been looped yet.
      */
-    fun sampleLazy(): Lazy<A>
+    fun sampleLazy(): () -> A
 
     /**
      * Transform the cell's value according to the supplied function.
      */
-    fun <B> map(f: (A) -> B): Cell<B>
+    fun <B> map(transform: (A) -> B): Cell<B>
 
     /**
      * Transform a cell with a generalized state loop (a mealy machine). The function
@@ -35,7 +35,7 @@ public interface Cell<A> {
      * is passed the input and the old state and returns the new state and output value.
      * Variant that takes a lazy initial state.
      */
-    fun <B, S> collect(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Cell<B>
+    fun <B, S> collect(initState: () -> S, f: (A, S) -> Pair<B, S>): Cell<B>
 
     /**
      * Listen for firings of this stream. The returned Listener has an unlisten()

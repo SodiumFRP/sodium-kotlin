@@ -79,7 +79,7 @@ public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
     }
 }
 
-public fun <A> Stream<A>.holdLazy(initValue: Lazy<A>): Cell<A> {
+public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
     val thiz = this as StreamImpl<A>
     return Transaction.apply2 {
         thiz.holdLazy(it, initValue)

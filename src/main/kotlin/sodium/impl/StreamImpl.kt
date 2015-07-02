@@ -56,7 +56,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.unsafeAddCleanup(l)
     }
 
-    fun holdLazy(trans: Transaction, initValue: Lazy<A>): Cell<A> {
+    fun holdLazy(trans: Transaction, initValue: () -> A): Cell<A> {
         return LazyCell(lastFiringOnly(trans), initValue)
     }
 
@@ -146,10 +146,10 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): StreamImpl<B> {
-        return collectLazy(Lazy(initState), f)
+        return collectLazy({ initState }, f)
     }
 
-    override fun <B, S> collectLazy(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): StreamImpl<B> {
+    override fun <B, S> collectLazy(initState: () -> S, f: (A, S) -> Pair<B, S>): StreamImpl<B> {
         return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
@@ -166,10 +166,10 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun <S> accum(initState: S, f: (A, S) -> S): Cell<S> {
-        return accumLazy(Lazy(initState), f)
+        return accumLazy({ initState }, f)
     }
 
-    override fun <S> accumLazy(initState: Lazy<S>, f: (A, S) -> S): Cell<S> {
+    override fun <S> accumLazy(initState: () -> S, f: (A, S) -> S): Cell<S> {
         return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)

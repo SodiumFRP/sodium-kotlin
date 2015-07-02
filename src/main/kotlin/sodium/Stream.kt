@@ -45,7 +45,7 @@ public interface Stream<out A> {
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    fun <B, S> collectLazy(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Stream<B>
+    fun <B, S> collectLazy(initState: () -> S, f: (A, S) -> Pair<B, S>): Stream<B>
 
     /**
      * Accumulate on input event, outputting the new state each time.
@@ -56,7 +56,7 @@ public interface Stream<out A> {
      * Accumulate on input event, outputting the new state each time.
      * Variant that takes a lazy initial state.
      */
-    fun <S> accumLazy(initState: Lazy<S>, f: (A, S) -> S): Cell<S>
+    fun <S> accumLazy(initState: () -> S, f: (A, S) -> S): Cell<S>
 
     /**
      * Throw away all event occurrences except for the first one.

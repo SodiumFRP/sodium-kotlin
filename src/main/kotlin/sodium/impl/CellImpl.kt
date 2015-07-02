@@ -38,20 +38,20 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
         }
     }
 
-    override fun sampleLazy(): Lazy<A> {
+    override fun sampleLazy(): () -> A {
         return Transaction.apply2 {
             sampleLazy(it)
         }
     }
 
-    fun sampleLazy(trans: Transaction): Lazy<A> {
+    fun sampleLazy(trans: Transaction): () -> A {
         val s = LazySample(this)
         trans.last {
             s.value = valueUpdate ?: sampleNoTrans()
             s.hasValue = true
             s.cell = null
         }
-        return Lazy {
+        return {
             if (s.hasValue)
                 s.value
             else
@@ -76,17 +76,17 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
         return sInitial.merge(updates(trans1))
     }
 
-    override fun <B> map(f: (A) -> B): Cell<B> {
+    override fun <B> map(transform: (A) -> B): Cell<B> {
         return Transaction.apply2 {
-            updates(it).map(f).holdLazy(it, sampleLazy(it).map(f))
+            updates(it).map(transform).holdLazy(it, Lazy.lift(transform, sampleLazy(it)))
         }
     }
 
     override fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): Cell<B> {
-        return collect(Lazy(initState), f)
+        return collect({ initState }, f)
     }
 
-    override fun <B, S> collect(initState: Lazy<S>, f: (A, S) -> Pair<B, S>): Cell<B> {
+    override fun <B, S> collect(initState: () -> S, f: (A, S) -> Pair<B, S>): Cell<B> {
         return Transaction.apply2 {
             val ea = updates(it).coalesce { fst, snd ->
                 snd

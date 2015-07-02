@@ -1,58 +1,49 @@
 package sodium
 
-public class Lazy<A> {
-    public constructor(f: () -> A) {
-        this.f = f
+public object Lazy {
+    /**
+     * Like map from Lazy<A> to Lazy<B>
+     */
+    public inline fun <A, B> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A) -> B,
+                                  inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A): () -> B {
+        return {
+            f(a())
+        }
     }
-
-    public constructor(a: A) {
-        f = { a }
-    }
-
-    private val f: () -> A
-
-    public fun get(): A = f()
 
     /**
-     * Map the lazy value according to the specified function.
+     * Lift a binary function into lazy values.
      */
-    public fun <B> map(f2: (A) -> B): Lazy<B> {
-        return Lazy {
-            f2(get())
+    public inline fun <A, B, C> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B) -> C,
+                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A,
+                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) b: () -> B): () -> C {
+        return {
+            f(a(), b())
         }
     }
 
-    companion object {
-
-        /**
-         * Lift a binary function into lazy values.
-         */
-        public inline fun <A, B, C> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B) -> C,
-                                         a: Lazy<A>, b: Lazy<B>): Lazy<C> {
-            return Lazy {
-                f(a.get(), b.get())
-            }
+    /**
+     * Lift a ternary function into lazy values.
+     */
+    public inline fun <A, B, C, D> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B, C) -> D,
+                                        inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A,
+                                        inlineOptions(InlineOption.ONLY_LOCAL_RETURN) b: () -> B,
+                                        inlineOptions(InlineOption.ONLY_LOCAL_RETURN) c: () -> C): () -> D {
+        return {
+            f(a(), b(), c())
         }
+    }
 
-        /**
-         * Lift a ternary function into lazy values.
-         */
-        public inline fun <A, B, C, D> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B, C) -> D,
-                                            a: Lazy<A>, b: Lazy<B>, c: Lazy<C>): Lazy<D> {
-            return Lazy {
-                f(a.get(), b.get(), c.get())
-            }
-        }
-
-        /**
-         * Lift a quaternary function into lazy values.
-         */
-        public inline fun <A, B, C, D, E> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B, C, D) -> E,
-                                               a: Lazy<A>, b: Lazy<B>, c: Lazy<C>, d: Lazy<D>): Lazy<E> {
-            return Lazy {
-                f(a.get(), b.get(), c.get(), d.get())
-            }
+    /**
+     * Lift a quaternary function into lazy values.
+     */
+    public inline fun <A, B, C, D, E> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B, C, D) -> E,
+                                           inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A,
+                                           inlineOptions(InlineOption.ONLY_LOCAL_RETURN) b: () -> B,
+                                           inlineOptions(InlineOption.ONLY_LOCAL_RETURN) c: () -> C,
+                                           inlineOptions(InlineOption.ONLY_LOCAL_RETURN) d: () -> D): () -> E {
+        return {
+            f(a(), b(), c(), d())
         }
     }
 }
-
