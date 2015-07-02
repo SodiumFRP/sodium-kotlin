@@ -3,21 +3,26 @@ package sodium.impl
 import sodium.*
 import sodium.Stream
 
-public open class CellImpl<A>(protected var value: A, protected val stream: StreamImpl<A>) : Cell<A> {
+public open class CellImpl<A>(protected var value: A, val stream: StreamImpl<A>) : Cell<A> {
+    private val listener: Listener
+    val updates: StreamImpl<A>
     private var valueUpdate: A = null
-    private var listener: Listener? = null
 
     init {
-        Transaction.apply2 {
-            listener = stream.listen(Node.NULL, it, false) { trans, newValue ->
+        val (listener, updates) = Transaction.apply2 {
+            val lstOnlyStream = stream.lastFiringOnly(it)
+            lstOnlyStream.listen(Node.NULL, it, false) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
                         setupValue()
                     }
                 }
                 valueUpdate = newValue
-            }
+            } to lstOnlyStream
         }
+
+        this.listener = listener
+        this.updates = updates
     }
 
     protected open fun setupValue() {
@@ -63,22 +68,20 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
         return value
     }
 
-    fun updates(trans: Transaction): StreamImpl<A> {
-        return stream.lastFiringOnly(trans)
-    }
-
     fun value(trans1: Transaction): Stream<A> {
         val sSpark = StreamWithSend<Unit>()
         trans1.prioritized(sSpark.node) {
             sSpark.send(it, Unit)
         }
         val sInitial = sSpark.snapshot(this)
-        return sInitial.merge(updates(trans1))
+        return sInitial.merge(updates)
     }
 
     override fun <B> map(transform: (A) -> B): Cell<B> {
         return Transaction.apply2 {
-            updates(it).map(transform).holdLazy(it, Lazy.lift(transform, sampleLazy(it)))
+            val initial = Lazy.lift(transform, sampleLazy(it))
+            val mappedStream = updates.map(transform)
+            LazyCell<B>(initial, mappedStream)
         }
     }
 
@@ -88,7 +91,7 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
 
     override fun <B, S> collect(initState: () -> S, f: (A, S) -> Pair<B, S>): Cell<B> {
         return Transaction.apply2 {
-            val ea = updates(it).coalesce { fst, snd ->
+            val ea = updates.coalesce { fst, snd ->
                 snd
             }
             val zbs = Lazy.lift(f, sampleLazy(), initState)
@@ -106,7 +109,7 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
     }
 
     protected fun finalize() {
-        listener?.unlisten()
+        listener.unlisten()
     }
 
     override fun listen(action: (A) -> Unit): Listener {

@@ -56,10 +56,6 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.unsafeAddCleanup(l)
     }
 
-    fun holdLazy(trans: Transaction, initValue: () -> A): Cell<A> {
-        return LazyCell(lastFiringOnly(trans), initValue)
-    }
-
     override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
         return snapshot(beh) { a, b ->
             b

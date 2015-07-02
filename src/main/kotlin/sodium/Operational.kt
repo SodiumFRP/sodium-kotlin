@@ -13,7 +13,7 @@ public object Operational {
      */
     public fun <A> updates(c: Cell<A>): Stream<A> {
         return Transaction.apply2 {
-            (c as CellImpl<A>).updates(it)
+            (c as CellImpl<A>).updates
         }
     }
 
