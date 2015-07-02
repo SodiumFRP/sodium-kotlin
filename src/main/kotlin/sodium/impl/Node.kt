@@ -4,7 +4,7 @@ import sodium.Transaction
 import java.lang.ref.WeakReference
 import java.util.HashSet
 
-public class Node<A>(private var rank: Long) : Comparable<Node<*>> {
+public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     val listeners = HashSet<Target<A>>()
 
     /**

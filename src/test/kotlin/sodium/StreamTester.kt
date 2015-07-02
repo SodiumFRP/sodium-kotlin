@@ -77,6 +77,7 @@ public class StreamTester : TestCase() {
             e1.send("left2a")
             e1.send("left2b")
         }
+        //dump(System.out, 0, (e1 as StreamImpl<*>).node)
         l.unlisten()
         TestCase.assertEquals(listOf(
                 "left1a", "left1b", "right1a", "right1b",
