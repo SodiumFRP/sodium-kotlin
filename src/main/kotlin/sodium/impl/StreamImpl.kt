@@ -4,15 +4,10 @@ import sodium.*
 import sodium.Stream
 import java.util.ArrayList
 
-public open class StreamImpl<A>(
-        val node: Node<A>,
-        val finalizers: MutableList<Listener>,
-        val firings: MutableList<A>) : Stream<A> {
-
-    /**
-     * An event that never fires.
-     */
-    public constructor() : this(Node(0L), ArrayList<Listener>(), ArrayList<A>())
+public abstract class StreamImpl<A> : Stream<A> {
+    val node = Node<A>(0)
+    private val finalizers = ArrayList<Listener>()
+    protected abstract val firings: List<A>
 
     override fun listen(action: (A) -> Unit): Listener {
         return Transaction.apply2 {
@@ -208,14 +203,9 @@ public open class StreamImpl<A>(
         return this
     }
 
-    override fun addCleanup(cleanup: Listener): StreamImpl<A> {
-        val fsNew = ArrayList(finalizers)
-        fsNew.add(cleanup)
-        return StreamImpl(node, fsNew, firings)
-    }
-
     protected fun finalize() {
-        for (l in finalizers)
+        for (l in finalizers) {
             l.unlisten()
+        }
     }
 }

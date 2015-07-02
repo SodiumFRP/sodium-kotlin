@@ -3,13 +3,13 @@ package sodium.impl
 import sodium.*
 import sodium.Stream
 
-public open class CellImpl<A>(protected var value: A, protected val stream: Stream<A> = StreamImpl<A>()) : Cell<A> {
+public open class CellImpl<A>(protected var value: A, protected val stream: StreamImpl<A>) : Cell<A> {
     private var valueUpdate: A = null
     private var listener: Listener? = null
 
     init {
         Transaction.apply2 {
-            listener = (stream as StreamImpl<A>).listen(Node.NULL, it, false) { trans, newValue ->
+            listener = stream.listen(Node.NULL, it, false) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
                         setupValue()
@@ -64,7 +64,7 @@ public open class CellImpl<A>(protected var value: A, protected val stream: Stre
     }
 
     fun updates(trans: Transaction): StreamImpl<A> {
-        return (stream as StreamImpl<A>).lastFiringOnly(trans)
+        return stream.lastFiringOnly(trans)
     }
 
     fun value(trans1: Transaction): Stream<A> {

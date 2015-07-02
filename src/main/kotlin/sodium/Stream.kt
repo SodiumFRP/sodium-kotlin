@@ -63,8 +63,6 @@ public interface Stream<out A> {
      */
     fun once(): Stream<A>
 
-    fun addCleanup(cleanup: Listener): Stream<A>
-
     /**
      * Variant of snapshot that throws away the event's value and captures the behavior's.
      */

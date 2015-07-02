@@ -1,13 +1,14 @@
 package sodium;
 
 import sodium.impl.CellImpl;
+import sodium.impl.StreamImpl;
 
 // TODO: kotlin version of this class not generates super() call coz of bug.
 public class LazyCell<A> extends CellImpl<A> {
 
     Lazy<A> lazyValue;
 
-    public LazyCell(final Stream<A> stream, final Lazy<A> lazyValue) {
+    public LazyCell(final StreamImpl<A> stream, final Lazy<A> lazyValue) {
         super(null, stream); // < Here!
         this.lazyValue = lazyValue;
     }

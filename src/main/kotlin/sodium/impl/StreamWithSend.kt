@@ -1,8 +1,11 @@
 package sodium.impl
 
 import sodium.Transaction
+import java.util.ArrayList
 
 public open class StreamWithSend<A> : StreamImpl<A>() {
+    override val firings = ArrayList<A>()
+
     fun send(trans: Transaction, a: A) {
         if (firings.isEmpty()) {
             trans.last {
