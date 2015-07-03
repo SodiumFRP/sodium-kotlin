@@ -33,7 +33,7 @@ public fun <A> Stream<A>.coalesce(transform: (A, A) -> A): Stream<A> {
 public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     val ea = this as StreamImpl<A>
     val eb = other as StreamImpl<A>
-    val out = sodium.impl.StreamWithSend<A>()
+    val out = StreamWithSend<A>()
     val left = Node<A>(0)
     val right = out.node
     val (changed, node_target) = left.link(right, null)

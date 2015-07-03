@@ -69,12 +69,18 @@ public open class CellImpl<A>(protected var value: A, val stream: StreamImpl<A>)
     }
 
     fun value(trans1: Transaction): Stream<A> {
-        val sSpark = StreamWithSend<Unit>()
-        trans1.prioritized(sSpark.node) {
-            sSpark.send(it, Unit)
+//        val sSpark = StreamWithSend<Unit>()
+//        trans1.prioritized(sSpark.node) {
+//            sSpark.send(it, Unit)
+//        }
+//        val sInitial = sSpark.snapshot(this)
+//        return sInitial.merge(updates)
+        val out = StreamWithSend<A>()
+        out.send(trans1, sampleNoTrans())
+        val listener = updates.listen(out.node, trans1, false) { trans2, a ->
+            out.send(trans2, a)
         }
-        val sInitial = sSpark.snapshot(this)
-        return sInitial.merge(updates)
+        return out.unsafeAddCleanup(listener)
     }
 
     override fun <B> map(transform: (A) -> B): Cell<B> {
