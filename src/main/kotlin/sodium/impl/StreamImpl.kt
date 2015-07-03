@@ -136,9 +136,18 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun gate(predicate: Cell<Boolean>): StreamImpl<A> {
-        return snapshot(predicate) { event, predicateValue ->
-            if (predicateValue) event else null
-        }.filterNotNull() as StreamImpl<A>
+//        return snapshot(predicate) { event, predicateValue ->
+//            if (predicateValue) event else null
+//        }.filterNotNull() as StreamImpl<A>
+        val out = StreamWithSend<A>()
+        val listener = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, a ->
+                if ((predicate as CellImpl<Boolean>).sampleNoTrans()) {
+                    out.send(trans2, a)
+                }
+            }
+        }
+        return out.unsafeAddCleanup(listener)
     }
 
     override fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): StreamImpl<B> {

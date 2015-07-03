@@ -15,4 +15,11 @@ public object Sodium {
      * An event that never fires.
      */
     public fun <A> never(): Stream<A> = NeverStreamImpl<A>()
+
+    public inline fun tx(body: Sodium.() -> Unit) {
+        Transaction.apply2 {
+            body()
+        }
+    }
+
 }
