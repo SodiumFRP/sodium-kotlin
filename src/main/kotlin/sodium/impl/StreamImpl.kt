@@ -8,9 +8,9 @@ import java.util.concurrent.Executor
 public abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
     private val finalizers = ArrayList<Listener>()
-    protected abstract val firings: List<A>
+    protected abstract val firings: List<Event<A>>
 
-    override fun listen(action: (A) -> Unit): Listener {
+    override fun listen(action: (Event<A>) -> Unit): Listener {
         return Transaction.apply2 {
             listen(Node.NULL, it, false) { trans2, value ->
                 action(value)
@@ -18,7 +18,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         }
     }
 
-    fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, A) -> Unit): Listener {
+    fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, Event<A>) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             val (changed, nodeTarget) = node.link(target, action)
             if (changed)
@@ -46,11 +46,13 @@ public abstract class StreamImpl<A> : Stream<A> {
         return ListenerImplementation<A>(this, action, nodeTarget)
     }
 
-    override fun <B> map(transform: (A) -> B): StreamImpl<B> {
+    override fun <B> map(transform: (Event<A>) -> B): StreamImpl<B> {
         val out = StreamWithSend<B>()
         val l = Transaction.apply2 {
             listen(out.node, it, false) { trans2, value ->
-                out.send(trans2, transform(value))
+                out.send(trans2) {
+                    transform(value)
+                }
             }
         }
 
@@ -58,16 +60,22 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
-        return snapshot(beh) { a, b ->
-            b
+        val out = StreamWithSend<B>()
+        val listener = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, a ->
+                out.send(trans2, (beh as CellImpl<B>).sampleNoTrans())
+            }
         }
+        return out.unsafeAddCleanup(listener)
     }
 
-    override fun <B, C> snapshot(b: Cell<B>, transform: (A, B) -> C): StreamImpl<C> {
+    override fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
         val out = StreamWithSend<C>()
         val listener = Transaction.apply2 {
             listen(out.node, it, false) { trans2, a ->
-                out.send(trans2, transform(a, (b as CellImpl<B>).sampleNoTrans()))
+                out.send(trans2) {
+                    transform(a, (b as CellImpl<B>).sampleNoTrans())
+                }
             }
         }
         return out.unsafeAddCleanup(listener)
@@ -94,7 +102,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.unsafeAddCleanup(l1)
     }
 
-    fun coalesce(transaction: Transaction, combine: (A, A) -> A): StreamImpl<A> {
+    fun coalesce(transaction: Transaction, combine: (Event<A>, Event<A>) -> A): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val handler = CoalesceHandler(combine, out)
         val listener = listen(out.node, transaction, false, handler)
@@ -118,12 +126,16 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.unsafeAddCleanup(listener)
     }
 
-    override fun filter(f: (A) -> Boolean): StreamImpl<A> {
+    override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val l = Transaction.apply2 {
             listen(out.node, it, false) { trans2, a ->
-                if (f(a)) {
-                    out.send(trans2, a)
+                try {
+                    if (predicate(a)) {
+                        out.send(trans2, a)
+                    }
+                } catch (e: Exception) {
+                    // do not send if error
                 }
             }
         }
@@ -132,7 +144,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun filterNotNull(): StreamImpl<A> {
         return filter {
-            it != null
+            it.value != null
         }
     }
 
@@ -143,39 +155,43 @@ public abstract class StreamImpl<A> : Stream<A> {
         val out = StreamWithSend<A>()
         val listener = Transaction.apply2 {
             listen(out.node, it, false) { trans2, a ->
-                if ((predicate as CellImpl<Boolean>).sampleNoTrans()) {
-                    out.send(trans2, a)
+                try {
+                    if ((predicate as CellImpl<Boolean>).sampleNoTrans().value) {
+                        out.send(trans2, a)
+                    }
+                } catch (e: Exception) {
+                    // do not send if error
                 }
             }
         }
         return out.unsafeAddCleanup(listener)
     }
 
-    override fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): StreamImpl<B> {
+    override fun <B, S> collect(initState: S, f: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
         return collectLazy({ initState }, f)
     }
 
-    override fun <B, S> collectLazy(initState: () -> S, f: (A, S) -> Pair<B, S>): StreamImpl<B> {
+    override fun <B, S> collectLazy(initState: () -> S, f: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
         return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
             val ebs = snapshot(s, f)
             val eb = ebs.map {
-                it.first
+                it.value.first
             }
             val es_out = ebs.map {
-                it.second
+                it.value.second
             }
             es.loop(es_out)
             eb
         }
     }
 
-    override fun <S> accum(initState: S, f: (A, S) -> S): Cell<S> {
+    override fun <S> accum(initState: S, f: (Event<A>, Event<S>) -> S): Cell<S> {
         return accumLazy({ initState }, f)
     }
 
-    override fun <S> accumLazy(initState: () -> S, f: (A, S) -> S): Cell<S> {
+    override fun <S> accumLazy(initState: () -> S, f: (Event<A>, Event<S>) -> S): Cell<S> {
         return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)

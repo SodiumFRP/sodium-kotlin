@@ -7,18 +7,18 @@ import sodium.impl.StreamImpl;
 // TODO: kotlin version of this class not generates super() call coz of bug.
 public class LazyCell<A> extends CellImpl<A> {
 
-    Function0<A> lazyValue;
+    Function0<Event<A>> lazyValue;
 
-    public LazyCell(final Function0<A> lazyValue, final StreamImpl<A> stream) {
+    public LazyCell(final StreamImpl<A> stream, final Function0<Event<A>> lazyValue) {
         super(null, stream); // < Here!
         this.lazyValue = lazyValue;
     }
 
     @Override
-    public A sampleNoTrans() {
-        final Function0<A> lazyValue = this.lazyValue;
-        final A value = getValue();
-        final A newValue;
+    public Event<A> sampleNoTrans() {
+        final Function0<Event<A>> lazyValue = this.lazyValue;
+        final Event<A> value = getValue();
+        final Event<A> newValue;
 
         if (value == null && lazyValue != null) {
             newValue = lazyValue.invoke();

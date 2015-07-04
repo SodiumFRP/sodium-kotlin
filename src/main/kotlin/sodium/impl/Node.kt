@@ -1,5 +1,6 @@
 package sodium.impl
 
+import sodium.Event
 import sodium.Transaction
 import java.lang.ref.WeakReference
 import java.util.HashSet
@@ -10,7 +11,7 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     /**
      * @return true if any changes were made.
      */
-    fun link(node: Node<*>, action: ((Transaction, A) -> Unit)?): Pair<Boolean, Target<A>> {
+    fun link(node: Node<*>, action: ((Transaction, Event<A>) -> Unit)?): Pair<Boolean, Target<A>> {
         val changed = node.ensureBiggerThan(rank)
         val target = Target<A>(action, node)
         listeners.add(target)
@@ -46,7 +47,7 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
         public val NULL: Node<Any> = Node(Long.MAX_VALUE)
     }
 
-    public class Target<A>(action: ((Transaction, A) -> Unit)?, val node: Node<*>) {
+    public class Target<A>(action: ((Transaction, Event<A>) -> Unit)?, val node: Node<*>) {
         val action = WeakReference(action)
     }
 }

@@ -1,12 +1,15 @@
 package sodium.impl
 
+import sodium.Error
+import sodium.Event
 import sodium.Transaction
+import sodium.Value
 import java.util.ArrayList
 
 public open class StreamWithSend<A> : StreamImpl<A>() {
-    override val firings = ArrayList<A>()
+    override val firings = ArrayList<Event<A>>()
 
-    fun send(trans: Transaction, a: A) {
+    fun send(trans: Transaction, a: Event<A>) {
         if (firings.isEmpty()) {
             trans.last {
                 firings.clear()
@@ -40,4 +43,11 @@ public open class StreamWithSend<A> : StreamImpl<A>() {
         }
     }
 
+    inline fun send(trans: Transaction, body: () -> A) {
+        try {
+            send(trans, Value(body()))
+        } catch (e: Exception) {
+            send(trans, Error(e))
+        }
+    }
 }

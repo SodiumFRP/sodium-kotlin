@@ -4,19 +4,23 @@ public object Lazy {
     /**
      * Like map from Lazy<A> to Lazy<B>
      */
-    public inline fun <A, B> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A) -> B,
-                                  inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A): () -> B {
+    public inline fun <A, B> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: Event<A>.() -> B,
+                                  inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> Event<A>): () -> Event<B> {
         return {
-            f(a())
+            try {
+                Value(a().f())
+            } catch (e: Exception) {
+                Error(e)
+            }
         }
     }
 
     /**
      * Lift a binary function into lazy values.
      */
-    public inline fun <A, B, C> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (A, B) -> C,
-                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> A,
-                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) b: () -> B): () -> C {
+    public inline fun <A, B, C> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (Event<A>, Event<B>) -> C,
+                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> Event<A>,
+                                     inlineOptions(InlineOption.ONLY_LOCAL_RETURN) b: () -> Event<B>): () -> C {
         return {
             f(a(), b())
         }

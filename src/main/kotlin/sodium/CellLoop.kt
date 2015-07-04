@@ -2,7 +2,7 @@ package sodium
 
 import sodium.impl.CellImpl
 
-public class CellLoop<A> : LazyCell<A>(null, StreamLoop<A>()) {
+public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), null) {
 
     public fun loop(a_out: Cell<A>) {
         Transaction.apply2 {
@@ -13,7 +13,7 @@ public class CellLoop<A> : LazyCell<A>(null, StreamLoop<A>()) {
         }
     }
 
-    override fun sampleNoTrans(): A {
+    override fun sampleNoTrans(): Event<A> {
         if (!(stream as StreamLoop<A>).assigned)
             throw RuntimeException("CellLoop sampled before it was looped")
         return super.sampleNoTrans()

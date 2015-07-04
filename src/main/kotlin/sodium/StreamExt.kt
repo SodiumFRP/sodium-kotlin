@@ -14,7 +14,7 @@ import sodium.impl.StreamWithSend
  * make any assumptions about the ordering, and the combining function would
  * ideally be commutative.
  */
-public fun <A> Stream<A>.coalesce(transform: (A, A) -> A): Stream<A> {
+public fun <A> Stream<A>.coalesce(transform: (Event<A>, Event<A>) -> A): Stream<A> {
     val thiz = this as StreamImpl<A>
     return Transaction.apply2 {
         thiz.coalesce(it, transform)
@@ -37,7 +37,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     val left = Node<A>(0)
     val right = out.node
     val (changed, node_target) = left.link(right, null)
-    val handler = { trans: Transaction, value: A ->
+    val handler = { trans: Transaction, value: Event<A> ->
         out.send(trans, value)
     }
     Transaction.apply2 {
@@ -61,7 +61,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
  * within the same transaction), they are combined using the same logic as
  * 'coalesce'.
  */
-public fun <A> Stream<A>.merge(stream: Stream<A>, combine: (A, A) -> A): Stream<A> {
+public fun <A> Stream<A>.merge(stream: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
     return merge(stream).coalesce(combine)
 }
 
@@ -75,19 +75,27 @@ public fun <A> Stream<A>.merge(stream: Stream<A>, combine: (A, A) -> A): Stream<
 public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
     val thiz = this as StreamImpl<A>
     return Transaction.apply2 {
-        CellImpl(initValue, thiz.lastFiringOnly(it))
+        CellImpl(Value(initValue), thiz.lastFiringOnly(it))
     }
 }
 
 public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
     val thiz = this as StreamImpl<A>
     return Transaction.apply2 {
-        LazyCell(initValue, thiz.lastFiringOnly(it))
+        LazyCell(thiz.lastFiringOnly(it)) {
+            try {
+                Value(initValue())
+            } catch (e: Exception) {
+                Error(e)
+            }
+        }
     }
 }
 
 /**
  * Push each event occurrence in the list onto a new transaction.
+ *
+ * Does not send events if Error.
  */
 public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     val out = StreamWithSend<A>()
@@ -95,10 +103,16 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     val listener = Transaction.apply2 {
         thiz.listen(out.node, it, false) { trans, events ->
             trans.post {
-                for (event in events) {
+                val safeEvents = try {
+                    events.value
+                } catch(e: Exception) {
+                    emptyList<A>()
+                }
+
+                for (event in safeEvents) {
                     val newTransaction = Transaction()
                     try {
-                        out.send(newTransaction, event)
+                        out.send(newTransaction, Value(event))
                     } finally {
                         newTransaction.close()
                     }

@@ -1,7 +1,7 @@
 package sodium
 
 import junit.framework.TestCase
-import sodium.impl.dump
+import sodium.impl.Node
 import java.util.ArrayList
 import java.util.Arrays
 
@@ -10,7 +10,7 @@ public class CellTester : TestCase() {
         val e = Sodium.streamSink<Int>()
         val b = e.hold(0)
         val out = ArrayList<Int>()
-        val l = Operational.updates(b).listen { out.add(it) }
+        val l = Operational.updates(b).listen { out.add(it.value) }
         e.send(2)
         e.send(9)
         l.unlisten()
@@ -22,8 +22,8 @@ public class CellTester : TestCase() {
         val trigger = Sodium.streamSink<Long>()
         val out = ArrayList<String>()
         val l = trigger.snapshot(b) { x, y ->
-            "$x $y"
-        }.listen { out.add(it) }
+            "${x.value} ${y.value}"
+        }.listen { out.add(it.value) }
         trigger.send(100L)
         b.send(2)
         trigger.send(200L)
@@ -37,7 +37,7 @@ public class CellTester : TestCase() {
     public fun testValues() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
-        val l = b.listen { out.add(it) }
+        val l = b.listen { out.add(it.value) }
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -47,7 +47,7 @@ public class CellTester : TestCase() {
     public fun testConstantBehavior() {
         val b = Sodium.cell(12)
         val out = ArrayList<Int>()
-        val l = b.listen { out.add(it) }
+        val l = b.listen { out.add(it.value) }
         l.unlisten()
         TestCase.assertEquals(Arrays.asList(12), out)
     }
@@ -56,7 +56,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(b).map { it + 100 }.listen { out.add(it) }
+            Operational.value(b).map { it.value + 100 }.listen { out.add(it.value) }
         }
         b.send(2)
         b.send(7)
@@ -78,7 +78,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            doubleUp(Operational.value(b)).map { it + 100 }.listen { out.add(it) }
+            doubleUp(Operational.value(b)).map { it.value + 100 }.listen { out.add(it.value) }
         }
         b.send(2)
         b.send(7)
@@ -91,8 +91,8 @@ public class CellTester : TestCase() {
         val out = ArrayList<Int>()
         val l = Transaction.apply {
             Operational.value(b).coalesce { fst, snd ->
-                snd
-            }.listen { out.add(it) }
+                snd.value
+            }.listen { out.add(it.value) }
         }
         b.send(2)
         b.send(7)
@@ -105,7 +105,7 @@ public class CellTester : TestCase() {
         val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
-            Operational.value(bi).snapshot(bc).listen { out.add(it) }
+            Operational.value(bi).snapshot(bc).listen { out.add(it.value) }
         }
         bc.send('b')
         bi.send(2)
@@ -120,7 +120,7 @@ public class CellTester : TestCase() {
         val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
-            doubleUp(Operational.value(bi)).snapshot(bc).listen { out.add(it) }
+            doubleUp(Operational.value(bi)).snapshot(bc).listen { out.add(it.value) }
         }
         bc.send('b')
         bi.send(2)
@@ -130,14 +130,211 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList('a', 'a', 'b', 'b', 'c', 'c'), out)
     }
 
+    public fun testValuesThenMerge() {
+        val bi = Sodium.cellSink(9)
+        val bj = Sodium.cellSink(2)
+        val out = ArrayList<Int>()
+        val l = Transaction.apply {
+            Operational.value(bi).merge(Operational.value(bj)) { x, y ->
+                x.value + y.value
+            }.listen { out.add(it.value) }
+        }
+        bi.send(1)
+        bj.send(4)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(11, 1, 4), out)
+    }
+
+    public fun testValuesThenFilter() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val l = Transaction.apply {
+            Operational.value(b).filter {
+                true
+            }.listen { out.add(it.value) }
+        }
+        b.send(2)
+        b.send(7)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(9, 2, 7), out)
+    }
+
+    public fun testValuesTwiceThenFilter() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val l = Transaction.apply2 {
+            doubleUp(Operational.value(b)).filter {
+                true
+            }.listen { out.add(it.value) }
+        }
+        b.send(2)
+        b.send(7)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(9, 9, 2, 2, 7, 7), out)
+    }
+
+    public fun testValuesThenOnce() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val l = Transaction.apply {
+            Operational.value(b).once().listen { out.add(it.value) }
+        }
+        b.send(2)
+        b.send(7)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(9), out)
+    }
+
+    public fun testValuesTwiceThenOnce() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val l = Transaction.apply {
+            doubleUp(Operational.value(b)).once().listen { out.add(it.value) }
+        }
+        b.send(2)
+        b.send(7)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(9), out)
+    }
+
+    public fun testValuesLateListen() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val value = Operational.value(b)
+        b.send(8)
+        val l = value.listen { out.add(it.value) }
+        b.send(2)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(2), out)
+    }
+
     public fun testMapB() {
         val b = Sodium.cellSink(6)
         val out = ArrayList<String>()
-        val l = b.map { it.toString() }.listen { out.add(it) }
-        dump(b)
+        val l = b.map { it.value.toString() }.listen { out.add(it.value) }
+        //dump(b)
         b.send(8)
         l.unlisten()
         TestCase.assertEquals(Arrays.asList("6", "8"), out)
+    }
+
+    public fun testMapBLateListen() {
+        val b = Sodium.cellSink(6)
+        val out = ArrayList<String>()
+        val bm = b.map {
+            it.value.toString()
+        }
+        b.send(2)
+        val l = bm.listen { out.add(it.value) }
+        b.send(8)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList("2", "8"), out)
+    }
+
+    public fun testTransaction() {
+        val calledBack = BooleanArray(1)
+        Transaction.apply {
+            it.prioritized(Node.NULL) {
+                calledBack[0] = true
+            }
+        }
+        TestCase.assertEquals(true, calledBack[0])
+    }
+
+    public fun testHoldIsDelayed() {
+        val e = Sodium.streamSink<Int>()
+        val h = e.hold(0)
+        val pair = e.snapshot(h) { a, b ->
+            "${a.value} ${b.value}"
+        }
+        val out = ArrayList<String>()
+        val l = pair.listen { out.add(it.value) }
+        e.send(2)
+        e.send(3)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList("2 0", "3 2"), out)
+    }
+
+    public fun testLoopBehavior() {
+        val ea = Sodium.streamSink<Int>()
+        val sum_out = Transaction.apply {
+            val sum = CellLoop<Int>()
+            val sum_out_ = ea.snapshot(sum) { x, y ->
+                x.value + y.value
+            }.hold(0)
+            sum.loop(sum_out_)
+            sum_out_
+        }
+        val out = ArrayList<Int>()
+        val l = sum_out.listen { out.add(it.value) }
+        ea.send(2)
+        ea.send(3)
+        ea.send(1)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(0, 2, 5, 6), out)
+        TestCase.assertEquals(6, sum_out.sample().value)
+    }
+
+    public fun testCollect() {
+        val ea = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        val sum = ea.hold(100).collect(0) { a, s ->
+            a.value + s.value to a.value + s.value
+        }
+        val l = sum.listen { out.add(it.value) }
+        ea.send(5)
+        ea.send(7)
+        ea.send(1)
+        ea.send(2)
+        ea.send(3)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(100, 105, 112, 113, 115, 118), out)
+    }
+
+    public fun testAccum() {
+        val ea = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        val sum = ea.accum(100) { a, s ->
+            a.value + s.value
+        }
+        val l = sum.listen { out.add(it.value) }
+        ea.send(5)
+        ea.send(7)
+        ea.send(1)
+        ea.send(2)
+        ea.send(3)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(100, 105, 112, 113, 115, 118), out)
+    }
+
+    public fun testLoopValueSnapshot() {
+        val out = ArrayList<String>()
+        val l = Transaction.apply {
+            val a = Sodium.cell("lettuce")
+            val b = Sodium.cellLoop<String>()
+            val eSnap = Operational.value(a).snapshot(b) { a, b ->
+                "${a.value} ${b.value}"
+            }
+            b.loop(Sodium.cell("cheese"))
+            eSnap.listen { out.add(it.value) }
+        }
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList("lettuce cheese"), out)
+    }
+
+    public fun testLoopValueHold() {
+        val out = ArrayList<String>()
+        val value = Transaction.apply {
+            val a = Sodium.cellLoop<String>()
+            val value_ = Operational.value(a).hold("onion")
+            a.loop(Sodium.cell("cheese"))
+            value_
+        }
+        val eTick = Sodium.streamSink<Unit>()
+        val l = eTick.snapshot(value).listen { out.add(it.value) }
+        eTick.send(Unit)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList("cheese"), out)
     }
 
 }

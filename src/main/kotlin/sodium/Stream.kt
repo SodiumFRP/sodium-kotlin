@@ -7,12 +7,12 @@ public interface Stream<out A> {
      * Listen for firings of this event. The returned Listener has an unlisten()
      * method to cause the listener to be removed. This is the observer pattern.
      */
-    fun listen(action: (A) -> Unit): Listener
+    fun listen(action: (Event<A>) -> Unit): Listener
 
     /**
      * Transform the event's value according to the supplied function.
      */
-    fun <B> map(transform: (A) -> B): Stream<B>
+    fun <B> map(transform: (Event<A>) -> B): Stream<B>
 
     /**
      * Push this event occurrence onto a new transaction. Same as split() but works
@@ -23,7 +23,7 @@ public interface Stream<out A> {
     /**
      * Only keep event occurrences for which the predicate returns true.
      */
-    fun filter(f: (A) -> Boolean): Stream<A>
+    fun filter(predicate: (Event<A>) -> Boolean): Stream<A>
 
     /**
      * Filter out any event occurrences whose value is a Java null pointer.
@@ -41,24 +41,24 @@ public interface Stream<out A> {
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    fun <B, S> collect(initState: S, f: (A, S) -> Pair<B, S>): Stream<B>
+    fun <B, S> collect(initState: S, f: (Event<A>, Event<S>) -> Pair<B, S>): Stream<B>
 
     /**
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    fun <B, S> collectLazy(initState: () -> S, f: (A, S) -> Pair<B, S>): Stream<B>
+    fun <B, S> collectLazy(initState: () -> S, f: (Event<A>, Event<S>) -> Pair<B, S>): Stream<B>
 
     /**
      * Accumulate on input event, outputting the new state each time.
      */
-    fun <S> accum(initState: S, f: (A, S) -> S): Cell<S>
+    fun <S> accum(initState: S, f: (Event<A>, Event<S>) -> S): Cell<S>
 
     /**
      * Accumulate on input event, outputting the new state each time.
      * Variant that takes a lazy initial state.
      */
-    fun <S> accumLazy(initState: () -> S, f: (A, S) -> S): Cell<S>
+    fun <S> accumLazy(initState: () -> S, f: (Event<A>, Event<S>) -> S): Cell<S>
 
     /**
      * Throw away all event occurrences except for the first one.
@@ -75,7 +75,7 @@ public interface Stream<out A> {
      * of the behavior that's sampled is the value as at the start of the transaction
      * before any state changes of the current transaction are applied through 'hold's.
      */
-    fun <B, C> snapshot(b: Cell<B>, transform: (A, B) -> C): Stream<C>
+    fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): Stream<C>
 
     fun onExecutor(executor: Executor): Stream<A>
 }

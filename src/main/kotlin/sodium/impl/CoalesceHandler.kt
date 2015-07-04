@@ -1,22 +1,32 @@
 package sodium.impl
 
+import sodium.Error
+import sodium.Event
 import sodium.Transaction
+import sodium.Value
 
-class CoalesceHandler<A>(private val f: (A, A) -> A, private val out: StreamWithSend<A>) : (Transaction, A) -> Unit {
-    private var accumValid: Boolean = false
-    private var accum: A = null
+class CoalesceHandler<A>(
+        private val transformation: (Event<A>, Event<A>) -> A,
+        private val out: StreamWithSend<A>) : (Transaction, Event<A>) -> Unit {
+    private var accumulator: Event<A>? = null
 
-    override fun invoke(transaction: Transaction, a: A) {
-        if (accumValid) {
-            accum = f(accum, a)
+    override fun invoke(transaction: Transaction, a: Event<A>) {
+        val acc = accumulator
+        if (acc != null) {
+            try {
+                accumulator = Value(transformation(acc, a))
+            } catch (e: Exception) {
+                accumulator = Error(e)
+            }
         } else {
             transaction.prioritized(out.node) {
-                out.send(it, accum)
-                accumValid = false
-                accum = null
+                val acc1 = accumulator
+                if (acc1 != null) {
+                    out.send(it, acc1)
+                    accumulator = null
+                }
             }
-            accum = a
-            accumValid = true
+            accumulator = a
         }
     }
 }

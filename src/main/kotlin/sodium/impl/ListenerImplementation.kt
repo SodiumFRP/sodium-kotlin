@@ -1,5 +1,6 @@
 package sodium.impl
 
+import sodium.Event
 import sodium.Listener
 import sodium.Transaction
 
@@ -13,7 +14,7 @@ class ListenerImplementation<A>(
          * It's also essential that we keep the action alive, since the node uses
          * a weak reference.
          */
-        private var action: ((Transaction, A) -> Unit)?,
+        private var action: ((Transaction, Event<A>) -> Unit)?,
         private var target: Node.Target<A>?) : Listener {
 
     override fun unlisten() {
