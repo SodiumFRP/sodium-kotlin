@@ -2,7 +2,6 @@ package sodium.impl
 
 import sodium.Error
 import sodium.Event
-import sodium.Transaction
 import sodium.Value
 import java.util.ArrayList
 

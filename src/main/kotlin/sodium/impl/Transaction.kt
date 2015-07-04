@@ -1,6 +1,5 @@
-package sodium
+package sodium.impl
 
-import sodium.impl.Node
 import java.util.ArrayList
 import java.util.HashSet
 import java.util.PriorityQueue

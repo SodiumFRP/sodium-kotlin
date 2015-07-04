@@ -2,6 +2,7 @@ package sodium
 
 import sodium.impl.StreamImpl
 import sodium.impl.StreamWithSend
+import sodium.impl.Transaction
 
 public class StreamLoop<A> : StreamWithSend<A>() {
     var assigned: Boolean = false

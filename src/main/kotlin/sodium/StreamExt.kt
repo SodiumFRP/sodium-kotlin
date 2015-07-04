@@ -1,9 +1,6 @@
 package sodium
 
-import sodium.impl.CellImpl
-import sodium.impl.Node
-import sodium.impl.StreamImpl
-import sodium.impl.StreamWithSend
+import sodium.impl.*
 
 /**
  * If there's more than one firing in a single transaction, combine them into

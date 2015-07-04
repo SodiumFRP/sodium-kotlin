@@ -2,7 +2,6 @@ package sodium.impl
 
 import sodium.Event
 import sodium.Listener
-import sodium.Transaction
 
 class ListenerImplementation<A>(
         /**

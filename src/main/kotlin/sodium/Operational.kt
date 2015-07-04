@@ -1,6 +1,7 @@
 package sodium
 
 import sodium.impl.CellImpl
+import sodium.impl.Transaction
 
 public object Operational {
     /**

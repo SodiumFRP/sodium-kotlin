@@ -2,7 +2,6 @@ package sodium.impl
 
 import sodium.Error
 import sodium.StreamSink
-import sodium.Transaction
 import sodium.Value
 
 public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {

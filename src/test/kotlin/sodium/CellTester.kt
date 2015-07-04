@@ -2,6 +2,7 @@ package sodium
 
 import junit.framework.TestCase
 import sodium.impl.Node
+import sodium.impl.Transaction
 import java.util.ArrayList
 import java.util.Arrays
 

@@ -2,7 +2,6 @@ package sodium.impl
 
 import sodium.CellSink
 import sodium.Error
-import sodium.Transaction
 import sodium.Value
 
 public class CellSinkImpl<A>(initValue: A) : CellSink<A>, CellImpl<A>(Value(initValue), StreamWithSend<A>()) {
