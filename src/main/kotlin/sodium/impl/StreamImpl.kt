@@ -3,6 +3,7 @@ package sodium.impl
 import sodium.*
 import sodium.Stream
 import java.util.ArrayList
+import java.util.concurrent.Executor
 
 public abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
@@ -212,5 +213,21 @@ public abstract class StreamImpl<A> : Stream<A> {
         for (l in finalizers) {
             l.unlisten()
         }
+    }
+
+    override fun onExecutor(executor: Executor): StreamImpl<A> {
+        val out = StreamWithSend<A>()
+
+        val listener = Transaction.apply2 {
+            listen(out.node, it, false) { trans2, value ->
+                executor.execute {
+                    Transaction.apply2 {
+                        out.send(it, value)
+                    }
+                }
+            }
+        }
+
+        return out.unsafeAddCleanup(listener)
     }
 }

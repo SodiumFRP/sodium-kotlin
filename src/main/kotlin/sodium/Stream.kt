@@ -1,5 +1,7 @@
 package sodium
 
+import java.util.concurrent.Executor
+
 public interface Stream<out A> {
     /**
      * Listen for firings of this event. The returned Listener has an unlisten()
@@ -74,4 +76,6 @@ public interface Stream<out A> {
      * before any state changes of the current transaction are applied through 'hold's.
      */
     fun <B, C> snapshot(b: Cell<B>, transform: (A, B) -> C): Stream<C>
+
+    fun onExecutor(executor: Executor): Stream<A>
 }
