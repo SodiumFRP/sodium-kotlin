@@ -33,13 +33,16 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     val out = StreamWithSend<A>()
     val left = Node<A>(0)
     val right = out.node
-    val (changed, node_target) = left.link(right, null)
+    // Весь этот блок конструируется отдельно от остальных,
+    // поэтому тут нет блокировок и ensureBiggerThan
+    right.rank = 1
+    val node_target = left.link(right, null)
     val handler = { trans: Transaction, value: Event<A> ->
         out.send(trans, value)
     }
     Transaction.apply2 {
-        val l1 = ea.listen(left, it, false, handler)
-        val l2 = eb.listen(right, it, false, handler)
+        val l1 = ea.listen(it, left, handler)
+        val l2 = eb.listen(it, right, handler)
         out.unsafeAddCleanup(l1).unsafeAddCleanup(l2)
     }
 
@@ -98,7 +101,7 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<C>
     val listener = Transaction.apply2 {
-        thiz.listen(out.node, it, false) { trans, events ->
+        thiz.listen(it, out.node) { trans, events ->
             trans.post {
                 val safeEvents = try {
                     events.value

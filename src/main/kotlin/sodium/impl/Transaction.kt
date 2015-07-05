@@ -47,7 +47,7 @@ public class Transaction {
         }
     }
 
-    fun close() {
+    public fun close() {
         while (true) {
             checkRegen()
             if (prioritizedQ.isEmpty())
@@ -96,7 +96,7 @@ public class Transaction {
         // Fine-grained lock that protects listeners and nodes.
         val listenersLock = Any()
 
-        private var currentTransaction: Transaction? = null
+        public var currentTransaction: Transaction? = null
         var inCallback: Int = 0
         private val onStartHooks = ArrayList<Runnable>()
         private var runningOnStartHooks: Boolean = false
@@ -188,9 +188,11 @@ public class Transaction {
             }
         }
 
-        public fun end() {
-            currentTransaction?.close()
+        @suppress("NOTHING_TO_INLINE")
+        public inline fun end() {
+            val transaction = currentTransaction
             currentTransaction = null
+            transaction?.close()
         }
 
         public inline fun <A> apply2(code: (Transaction) -> A): A = synchronized (transactionLock) {

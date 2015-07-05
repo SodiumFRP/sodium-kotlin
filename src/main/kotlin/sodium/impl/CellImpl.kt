@@ -11,7 +11,7 @@ public open class CellImpl<A>(protected var value: Event<A>?, val stream: Stream
     init {
         val (listener, updates) = Transaction.apply2 {
             val lastOnlyStream = stream.lastFiringOnly(it)
-            lastOnlyStream.listen(Node.NULL, it, false) { trans, newValue ->
+            lastOnlyStream.listen(it, Node.NULL) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
                         setupValue()
@@ -71,7 +71,7 @@ public open class CellImpl<A>(protected var value: Event<A>?, val stream: Stream
         trans1.prioritized(out.node) {
             out.send(it, sampleNoTrans())
         }
-        val listener = updates.listen(out.node, trans1, false) { trans2, a ->
+        val listener = updates.listen(trans1, out.node) { trans2, a ->
             out.send(trans2, a)
         }
         return out.unsafeAddCleanup(listener)

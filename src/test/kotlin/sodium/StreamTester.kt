@@ -13,10 +13,41 @@ public class StreamTester : TestCase() {
             out.add(it.value)
         }
         e.send(5)
+        e.send(7)
+        TestCase.assertEquals(listOf(5, 7), out)
+
+        out.clear()
+        Sodium.tx {
+            e.send(3)
+            e.send(4)
+        }
+        TestCase.assertEquals(listOf(3, 4), out)
+
+        out.clear()
+        e.send(5)
         l.unlisten()
-        TestCase.assertEquals(listOf(5), out)
         e.send(6)
         TestCase.assertEquals(listOf(5), out)
+    }
+
+    public fun testListenThrows() {
+        val e = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        val l = e.listen {
+            if (it.value % 2 == 0) {
+                throw RuntimeException()
+            } else {
+                out.add(it.value)
+            }
+        }
+
+        e.send(1)
+        e.send(2)
+        e.send(3)
+        e.send(4)
+        e.send(5)
+        TestCase.assertEquals(listOf(1, 3, 5), out)
+        l.unlisten()
     }
 
     public fun testMap() {
@@ -31,6 +62,31 @@ public class StreamTester : TestCase() {
         e.send(5)
         l.unlisten()
         TestCase.assertEquals(listOf("5"), out)
+    }
+
+    public fun testMapThrows() {
+        val e = Sodium.streamSink<Int>()
+        val m = e.map {
+            val v = it.value
+            if (v % 2 == 0)
+                throw RuntimeException("map$v")
+            v.toString()
+        }
+        val out = ArrayList<String>()
+        val l = m.listen {
+            try {
+                out.add(it.value)
+            } catch (e: Exception) {
+                out.add(e.getMessage())
+            }
+        }
+        e.send(1)
+        e.send(2)
+        e.send(3)
+        e.sendError(RuntimeException("sent"))
+        e.send(5)
+        l.unlisten()
+        TestCase.assertEquals(listOf("1", "map2", "3", "sent", "5"), out)
     }
 
     public fun testMergeNonSimultaneous() {
@@ -105,6 +161,18 @@ public class StreamTester : TestCase() {
         val out = ArrayList<Char>()
         val l = e.filter { it.value.isUpperCase() }.listen { out.add(it.value) }
         e.send('H')
+        e.send('o')
+        e.send('I')
+        l.unlisten()
+        TestCase.assertEquals(listOf('H', 'I'), out)
+    }
+
+    public fun testFilterThrows() {
+        val e = Sodium.streamSink<Char?>()
+        val out = ArrayList<Char>()
+        val l = e.filter { it.value!!.isUpperCase() }.listen { out.add(it.value) }
+        e.send('H')
+        e.send(null)
         e.send('o')
         e.send('I')
         l.unlisten()

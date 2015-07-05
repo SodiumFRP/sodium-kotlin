@@ -35,6 +35,31 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList("100 0", "200 2", "300 1"), out)
     }
 
+    public fun testSnapshotThrows() {
+        val b = Sodium.cellSink(0)
+        val trigger = Sodium.streamSink<Int>()
+        val out = ArrayList<String>()
+        val l = trigger.snapshot(b) { x, y ->
+            if (x.value % 2 != 0)
+                throw RuntimeException("ex:${x.value}")
+            "${x.value} ${y.value}"
+        }.listen {
+            try {
+                out.add(it.value)
+            } catch (e: Exception) {
+                out.add(e.getMessage())
+            }
+        }
+        trigger.send(100)
+        b.send(2)
+        trigger.send(201)
+        b.send(9)
+        b.send(1)
+        trigger.send(300)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList("100 0", "ex:201", "300 1"), out)
+    }
+
     public fun testValues() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()

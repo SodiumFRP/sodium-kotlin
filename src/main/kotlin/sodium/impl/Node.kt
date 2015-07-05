@@ -7,21 +7,22 @@ import java.util.HashSet
 public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     val listeners = HashSet<Target<A>>()
 
-    /**
-     * @return true if any changes were made.
-     */
-    fun link(node: Node<*>, action: ((Transaction, Event<A>) -> Unit)?): Pair<Boolean, Target<A>> {
-        val changed = node.ensureBiggerThan(rank)
+    @suppress("NOTHING_TO_INLINE")
+    inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Target<A> {
         val target = Target<A>(action, node)
         listeners.add(target)
-        return changed to target
+        return target
     }
 
-    fun unlink(target: Target<out A>) {
+    @suppress("NOTHING_TO_INLINE")
+    inline fun unlink(target: Target<out A>) {
         listeners.remove(target)
     }
 
-    private fun ensureBiggerThan(limit: Long): Boolean {
+    /**
+     * @return true if any changes were made.
+     */
+    fun ensureBiggerThan(limit: Long): Boolean {
         if (rank > limit)
             return false
 

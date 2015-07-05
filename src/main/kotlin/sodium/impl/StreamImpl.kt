@@ -12,21 +12,27 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
         return Transaction.apply2 {
-            listen(Node.NULL, it, false) { trans2, value ->
-                action(value)
+            listen(it, Node.NULL) { trans2, value ->
+                try {
+                    action(value)
+                } catch (e: Exception) {
+                    // Drop any exception.
+                    // If you want to handle exceptions use map.
+                }
             }
         }
     }
 
-    fun listen(target: Node<*>, trans: Transaction, suppressEarlierFirings: Boolean, action: (Transaction, Event<A>) -> Unit): Listener {
+    fun listen(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
-            val (changed, nodeTarget) = node.link(target, action)
-            if (changed)
+            if (target.ensureBiggerThan(node.rank)) {
                 trans.toRegen = true
-            nodeTarget
+            }
+
+            node.link(target, action)
         }
 
-        if (!suppressEarlierFirings && !firings.isEmpty()) {
+        if (!firings.isEmpty()) {
             val firings = ArrayList(firings)
             trans.prioritized(target) {
                 // Anything sent already in this transaction must be sent now so that
@@ -43,26 +49,25 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return ListenerImplementation<A>(this, action, nodeTarget)
+        return ListenerImplementation(this, action, nodeTarget)
     }
 
     override fun <B> map(transform: (Event<A>) -> B): StreamImpl<B> {
         val out = StreamWithSend<B>()
         val l = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, value ->
+            listen(it, out.node) { trans2, value ->
                 out.send(trans2) {
                     transform(value)
                 }
             }
         }
-
         return out.unsafeAddCleanup(l)
     }
 
     override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
         val out = StreamWithSend<B>()
         val listener = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, a ->
+            listen(it, out.node) { trans2, a ->
                 out.send(trans2, (beh as CellImpl<B>).sampleNoTrans())
             }
         }
@@ -72,7 +77,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
         val out = StreamWithSend<C>()
         val listener = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, a ->
+            listen(it, out.node) { trans2, a ->
                 out.send(trans2) {
                     transform(a, (b as CellImpl<B>).sampleNoTrans())
                 }
@@ -88,7 +93,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun defer(): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val l1 = Transaction.apply2 {
-            listen(out.node, it, false) { trans, a ->
+            listen(it, out.node) { trans, a ->
                 trans.post {
                     val newTrans = Transaction()
                     try {
@@ -105,7 +110,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     fun coalesce(transaction: Transaction, combine: (Event<A>, Event<A>) -> A): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val handler = CoalesceHandler(combine, out)
-        val listener = listen(out.node, transaction, false, handler)
+        val listener = listen(transaction, out.node, handler)
         return out.unsafeAddCleanup(listener)
     }
 
@@ -118,7 +123,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 //        }
 
         val out = StreamWithSend<A>()
-        val listener = listen(out.node, trans, false) { transaction, value ->
+        val listener = listen(trans, out.node) { transaction, value ->
             transaction.prioritized(out.node) {
                 out.send(it, firings.last())
             }
@@ -129,7 +134,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val l = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, a ->
+            listen(it, out.node) { trans2, a ->
                 try {
                     if (predicate(a)) {
                         out.send(trans2, a)
@@ -154,7 +159,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 //        }.filterNotNull() as StreamImpl<A>
         val out = StreamWithSend<A>()
         val listener = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, a ->
+            listen(it, out.node) { trans2, a ->
                 try {
                     if ((predicate as CellImpl<Boolean>).sampleNoTrans().value) {
                         out.send(trans2, a)
@@ -207,7 +212,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         val la = arrayOfNulls<Listener>(1)
         val out = StreamWithSend<A>()
         la[0] = Transaction.apply2 {
-            listen(out.node, it, false) { trans, a ->
+            listen(it, out.node) { trans, a ->
                 val listener = la[0]
                 if (listener != null) {
                     out.send(trans, a)
@@ -235,7 +240,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         val out = StreamWithSend<A>()
 
         val listener = Transaction.apply2 {
-            listen(out.node, it, false) { trans2, value ->
+            listen(it, out.node) { trans2, value ->
                 executor.execute {
                     Transaction.apply2 {
                         out.send(it, value)
