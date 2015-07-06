@@ -103,6 +103,6 @@ public fun dump(stream: Stream<*>) {
     dump(System.out, (stream as StreamImpl<*>).node)
 }
 
-private fun formatNode(node: Node<*>) = "Node:" + node.hashCode()
-private fun formatTarget(node: Node.Target<*>) = "Target:" + node.hashCode()
-private fun formatAction(action: Any) = "action:" + action.hashCode()
+private fun formatNode(node: Node<*>) = "Node:" + Integer.toString(node.hashCode(), 16).toUpperCase()
+private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(node.hashCode(), 16).toUpperCase()
+private fun formatAction(action: Any) = "action:" + Integer.toString(action.hashCode(), 16).toUpperCase()
