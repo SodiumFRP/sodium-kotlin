@@ -4,6 +4,8 @@ import junit.framework.TestCase
 import sodium.impl.Transaction
 import java.util.ArrayList
 import java.util.Arrays
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 public class StreamTester : TestCase() {
     public fun testSendStream() {
@@ -48,6 +50,20 @@ public class StreamTester : TestCase() {
         e.send(5)
         TestCase.assertEquals(listOf(1, 3, 5), out)
         l.unlisten()
+    }
+
+    public fun testListenInTx() {
+        val e = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        Sodium.tx {
+            e.send(5)
+            e.send(7)
+            val l = e.listen {
+                out.add(it.value)
+            }
+            l.unlisten()
+        }
+        TestCase.assertEquals(listOf(5, 7), out)
     }
 
     public fun testMap() {
@@ -274,5 +290,27 @@ public class StreamTester : TestCase() {
         e.send('A')
         l.unlisten()
         TestCase.assertEquals(Arrays.asList('C', 'B', 'A'), out)
+    }
+
+    public fun testOnExecutor() {
+        val executor = Executors.newSingleThreadExecutor()
+        val threadId = arrayOfNulls<Long>(2)
+        executor.execute {
+            threadId.set(0, Thread.currentThread().getId())
+        }
+
+        val (l, s) = Sodium.tx {
+            val s = streamSink<Unit>()
+            s.onExecutor(executor).listen {
+                threadId.set(1, Thread.currentThread().getId())
+            } to s
+        }
+
+        s.send(Unit)
+
+        executor.shutdown()
+        executor.awaitTermination(10, TimeUnit.SECONDS)
+        TestCase.assertEquals(threadId[0], threadId[1])
+        l.unlisten()
     }
 }
