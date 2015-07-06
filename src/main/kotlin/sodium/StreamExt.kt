@@ -77,7 +77,7 @@ public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
 }
 
 public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
-    return LazyCell(this as StreamImpl<A>) {
+    return LazyCell(this as StreamImpl<A>, false) {
         try {
             Value(initValue())
         } catch (e: Exception) {

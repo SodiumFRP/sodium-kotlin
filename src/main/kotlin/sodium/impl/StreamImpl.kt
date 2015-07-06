@@ -8,7 +8,7 @@ import java.util.concurrent.Executor
 public abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
     private val finalizers = ArrayList<Listener>()
-    protected abstract val firings: List<Event<A>>
+    abstract val firings: List<Event<A>>
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
         return Transaction.apply2 {

@@ -3,6 +3,7 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.Node
 import sodium.impl.Transaction
+import sodium.impl.dump
 import java.util.ArrayList
 import java.util.Arrays
 
@@ -71,7 +72,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testConstantBehavior() {
-        val b = Sodium.cell(12)
+        val b = Sodium.const(12)
         val out = ArrayList<Int>()
         val l = b.listen { out.add(it.value) }
         l.unlisten()
@@ -238,10 +239,14 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(6)
         val out = ArrayList<String>()
         val l = b.map { it.value.toString() }.listen { out.add(it.value) }
-        //dump(b)
+        dump(b)
         b.send(8)
+        Sodium.tx {
+            b.send(7)
+            b.send(9)
+        }
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList("6", "8"), out)
+        TestCase.assertEquals(Arrays.asList("6", "8", "9"), out)
     }
 
     public fun testMapBLateListen() {
@@ -336,12 +341,12 @@ public class CellTester : TestCase() {
     public fun testLoopValueSnapshot() {
         val out = ArrayList<String>()
         val l = Transaction.apply {
-            val a = Sodium.cell("lettuce")
+            val a = Sodium.const("lettuce")
             val b = Sodium.cellLoop<String>()
             val eSnap = Operational.value(a).snapshot(b) { a, b ->
                 "${a.value} ${b.value}"
             }
-            b.loop(Sodium.cell("cheese"))
+            b.loop(Sodium.const("cheese"))
             eSnap.listen { out.add(it.value) }
         }
         l.unlisten()
@@ -353,7 +358,7 @@ public class CellTester : TestCase() {
         val value = Transaction.apply {
             val a = Sodium.cellLoop<String>()
             val value_ = Operational.value(a).hold("onion")
-            a.loop(Sodium.cell("cheese"))
+            a.loop(Sodium.const("cheese"))
             value_
         }
         val eTick = Sodium.streamSink<Unit>()

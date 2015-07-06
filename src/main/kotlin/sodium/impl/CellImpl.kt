@@ -3,22 +3,33 @@ package sodium.impl
 import sodium.*
 import sodium.Stream
 
-public open class CellImpl<A>(protected var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A> {
+public open class CellImpl<A>(protected var value: Event<A>?, val stream: StreamImpl<A>, lo: Boolean = false) : Cell<A> {
     private val listener: Listener
     val updates: StreamImpl<A>
     private var valueUpdate: Event<A>? = null
 
     init {
         val (listener, updates) = Transaction.apply2 {
-            val lastOnlyStream = stream.lastFiringOnly(it)
-            lastOnlyStream.listen(it, Node.NULL) { trans, newValue ->
-                if (valueUpdate == null) {
-                    trans.last {
-                        setupValue()
+            if (lo) {
+                stream.listen(it, Node.NULL) { trans, newValue ->
+                    if (valueUpdate == null) {
+                        trans.last {
+                            setupValue()
+                        }
                     }
-                }
-                valueUpdate = newValue
-            } to lastOnlyStream
+                    valueUpdate = newValue
+                } to stream
+            } else {
+                val lastOnlyStream = stream.lastFiringOnly(it)
+                lastOnlyStream.listen(it, Node.NULL) { trans, newValue ->
+                    if (valueUpdate == null) {
+                        trans.last {
+                            setupValue()
+                        }
+                    }
+                    valueUpdate = newValue
+                } to lastOnlyStream
+            }
         }
 
         this.listener = listener
@@ -80,8 +91,10 @@ public open class CellImpl<A>(protected var value: Event<A>?, val stream: Stream
     override fun <B> map(transform: (Event<A>) -> B): Cell<B> {
         return Transaction.apply2 {
             val initial = Lazy.lift(transform, sampleLazy(it))
-            val mappedStream = updates.map(transform)
-            LazyCell<B>(mappedStream, initial)
+            val mappedStream = StreamWithSend<B>()
+            val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, stream.firings, transform))
+            mappedStream.unsafeAddCleanup(l)
+            LazyCell<B>(mappedStream, true, initial)
         }
     }
 

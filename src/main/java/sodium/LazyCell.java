@@ -9,8 +9,8 @@ public class LazyCell<A> extends CellImpl<A> {
 
     Function0<Event<A>> lazyValue;
 
-    public LazyCell(final StreamImpl<A> stream, final Function0<Event<A>> lazyValue) {
-        super(null, stream); // < Here!
+    public LazyCell(final StreamImpl<A> stream, final boolean lo, final Function0<Event<A>> lazyValue) {
+        super(null, stream, lo); // < Here!
         this.lazyValue = lazyValue;
     }
 
