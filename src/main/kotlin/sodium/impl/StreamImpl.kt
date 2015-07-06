@@ -119,15 +119,11 @@ public abstract class StreamImpl<A> : Stream<A> {
      */
     fun lastFiringOnly(trans: Transaction): StreamImpl<A> {
 //        return coalesce(trans) {first, second ->
-//            second
+//            second.value
 //        }
 
         val out = StreamWithSend<A>()
-        val listener = listen(trans, out.node) { transaction, value ->
-            transaction.prioritized(out.node) {
-                out.send(it, firings.last())
-            }
-        }
+        val listener = listen(trans, out.node, LastOnlyHandler(out, firings))
         return out.unsafeAddCleanup(listener)
     }
 

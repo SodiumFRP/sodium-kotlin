@@ -73,21 +73,15 @@ public fun <A> Stream<A>.merge(stream: Stream<A>, combine: (Event<A>, Event<A>) 
  * the transaction.
  */
 public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
-    val thiz = this as StreamImpl<A>
-    return Transaction.apply2 {
-        CellImpl(Value(initValue), thiz.lastFiringOnly(it))
-    }
+    return CellImpl(Value(initValue), this as StreamImpl<A>)
 }
 
 public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
-    val thiz = this as StreamImpl<A>
-    return Transaction.apply2 {
-        LazyCell(thiz.lastFiringOnly(it)) {
-            try {
-                Value(initValue())
-            } catch (e: Exception) {
-                Error(e)
-            }
+    return LazyCell(this as StreamImpl<A>) {
+        try {
+            Value(initValue())
+        } catch (e: Exception) {
+            Error(e)
         }
     }
 }

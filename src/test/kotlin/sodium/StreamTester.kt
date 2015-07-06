@@ -1,9 +1,9 @@
 package sodium
 
 import junit.framework.TestCase
+import sodium.impl.StreamImpl
 import sodium.impl.Transaction
 import java.util.ArrayList
-import java.util.Arrays
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -234,7 +234,7 @@ public class StreamTester : TestCase() {
         predicate.send(true)
         ec.send('I')
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList('H', 'I'), out)
+        TestCase.assertEquals(listOf('H', 'I'), out)
     }
 
     public fun testCollect() {
@@ -250,7 +250,7 @@ public class StreamTester : TestCase() {
         ea.send(2)
         ea.send(3)
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList(105, 112, 113, 115, 118), out)
+        TestCase.assertEquals(listOf(105, 112, 113, 115, 118), out)
     }
 
     public fun testAccum() {
@@ -266,7 +266,7 @@ public class StreamTester : TestCase() {
         ea.send(2)
         ea.send(3)
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList(100, 105, 112, 113, 115, 118), out)
+        TestCase.assertEquals(listOf(100, 105, 112, 113, 115, 118), out)
     }
 
     public fun testOnce() {
@@ -277,7 +277,7 @@ public class StreamTester : TestCase() {
         e.send('B')
         e.send('C')
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList('A'), out)
+        TestCase.assertEquals(listOf('A'), out)
     }
 
     public fun testDefer() {
@@ -289,7 +289,7 @@ public class StreamTester : TestCase() {
         e.send('B')
         e.send('A')
         l.unlisten()
-        TestCase.assertEquals(Arrays.asList('C', 'B', 'A'), out)
+        TestCase.assertEquals(listOf('C', 'B', 'A'), out)
     }
 
     public fun testOnExecutor() {
@@ -312,5 +312,25 @@ public class StreamTester : TestCase() {
         executor.awaitTermination(10, TimeUnit.SECONDS)
         TestCase.assertEquals(threadId[0], threadId[1])
         l.unlisten()
+    }
+
+    public fun testLast() {
+        val out = ArrayList<Int>()
+        val sink = Sodium.streamSink<Int>()
+        val lastOnly = Transaction.apply2 {
+            (sink as StreamImpl<Int>).lastFiringOnly(it)
+        }
+        val l = lastOnly.listen {
+            out.add(it.value)
+        }
+
+        Sodium.tx {
+            sink.send(3)
+            sink.send(5)
+            sink.send(7)
+        }
+
+        l.unlisten()
+        TestCase.assertEquals(listOf(7), out)
     }
 }
