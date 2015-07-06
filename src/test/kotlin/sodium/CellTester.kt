@@ -246,6 +246,8 @@ public class CellTester : TestCase() {
             b.send(9)
         }
         l.unlisten()
+        System.gc()
+        dump(b)
         TestCase.assertEquals(Arrays.asList("6", "8", "9"), out)
     }
 

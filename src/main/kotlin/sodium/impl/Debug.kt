@@ -28,12 +28,12 @@ private fun Appendable.declareNodeStyle(node: Node<*>) {
         single(formatNode(it))
         append(';')
     }
+    append('}')
     allNodes.forEach {
         append('\n')
         single(formatNode(it))
-        append(""" [label="rank=${it.rank}"];""")
+        append(""" [label="${formatNode(it)}\nrank=${it.rank}"];""")
     }
-    append('}')
 }
 
 private fun getAllNodes(out: HashSet<Node<*>>, node: Node<*>) {
@@ -80,7 +80,8 @@ private fun Appendable.direction(from: String, to: String) {
 }
 
 public fun dump(sb: Appendable, node: Node<*>): Unit = with(sb) {
-    append("digraph G {\n  ")
+    append('\n')
+    append("digraph G {")
     declareNodeStyle(node)
     //dumpTargets(sb, 2, Node.Target<Any>(null, node))
     dump(sb, 2, node)
@@ -103,6 +104,6 @@ public fun dump(stream: Stream<*>) {
     dump(System.out, (stream as StreamImpl<*>).node)
 }
 
-private fun formatNode(node: Node<*>) = "Node:" + Integer.toString(node.hashCode(), 16).toUpperCase()
-private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(node.hashCode(), 16).toUpperCase()
-private fun formatAction(action: Any) = "action:" + Integer.toString(action.hashCode(), 16).toUpperCase()
+private fun formatNode(node: Node<*>) = "Node:" +  Integer.toString(System.identityHashCode(node), 16).toUpperCase()
+private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(System.identityHashCode(node), 16).toUpperCase()
+private fun formatAction(action: Any) = "action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase()
