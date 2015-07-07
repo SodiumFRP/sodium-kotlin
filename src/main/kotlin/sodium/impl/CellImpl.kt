@@ -76,8 +76,8 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
         trans1.prioritized(out.node) {
             out.send(it, sampleNoTrans())
         }
-        stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
-        return out.unsafeAddCleanup(listener)
+        val l = stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
+        return out.unsafeAddCleanup(l)
     }
 
     override fun <B> map(transform: (Event<A>) -> B): Cell<B> {
