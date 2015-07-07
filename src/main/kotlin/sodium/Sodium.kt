@@ -13,6 +13,16 @@ public object Sodium {
 
     public fun <A> streamSink(): StreamSink<A> = StreamSinkImpl<A>()
 
+    public fun <A> streamLoop(): StreamLoop<A> = StreamLoop()
+
+    public fun <A> lazyCell(stream: Stream<A>, value: () -> A): LazyCell<A> = LazyCell(stream as StreamImpl<A>, false) {
+        try {
+            Value(value())
+        } catch (e: Exception) {
+            Error(e)
+        }
+    }
+
     /**
      * An event that never fires.
      */

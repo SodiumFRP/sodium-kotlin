@@ -3,7 +3,7 @@ package sodium
 import sodium.impl.CellImpl
 import sodium.impl.Transaction
 
-public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), false, null) {
+public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), true, null) {
 
     public fun loop(a_out: Cell<A>) {
         Transaction.apply2 {

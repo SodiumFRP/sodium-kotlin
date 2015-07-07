@@ -3,7 +3,7 @@ package sodium.impl
 import sodium.*
 import sodium.Stream
 
-public open class CellImpl<A>(protected var value: Event<A>?, val stream: StreamImpl<A>, lo: Boolean = false) : Cell<A> {
+public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, lo: Boolean = false) : Cell<A> {
     private val listener: Listener
     val updates: StreamImpl<A>
     private var valueUpdate: Event<A>? = null
