@@ -72,19 +72,11 @@ public open class CellImpl<A>(protected var value: Event<A>?, val stream: Stream
     }
 
     fun value(trans1: Transaction): Stream<A> {
-//        val sSpark = StreamWithSend<Unit>()
-//        trans1.prioritized(sSpark.node) {
-//            sSpark.send(it, Unit)
-//        }
-//        val sInitial = sSpark.snapshot(this)
-//        return sInitial.merge(updates)
         val out = StreamWithSend<A>()
         trans1.prioritized(out.node) {
             out.send(it, sampleNoTrans())
         }
-        val listener = updates.listen(trans1, out.node) { trans2, a ->
-            out.send(trans2, a)
-        }
+        stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
         return out.unsafeAddCleanup(listener)
     }
 
