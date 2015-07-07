@@ -28,7 +28,7 @@ public object Sodium {
      */
     public fun <A> never(): Stream<A> = NeverStreamImpl<A>()
 
-    public inline fun <R> tx(body: Sodium.() -> R): R {
+    public fun <R> tx(body: Sodium.() -> R): R {
         return Transaction.apply2 {
             body()
         }

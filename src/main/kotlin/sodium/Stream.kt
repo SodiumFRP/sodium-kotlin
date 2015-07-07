@@ -77,5 +77,12 @@ public interface Stream<out A> {
      */
     fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): Stream<C>
 
+    /**
+     * Attach a listener to this stream so that its {@link Listener#unlisten()} is invoked
+     * when this stream is garbage collected. Useful for functions that initiate I/O,
+     * returning the result of it through a stream.
+     */
+    fun addCleanup(cleanup: Listener): Stream<A>
+
     fun onExecutor(executor: Executor): Stream<A>
 }

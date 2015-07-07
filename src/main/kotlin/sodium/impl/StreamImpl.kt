@@ -222,7 +222,16 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     fun unsafeAddCleanup(cleanup: Listener): StreamImpl<A> {
-        finalizers.add(cleanup)
+        synchronized(finalizers) {
+            finalizers.add(cleanup)
+        }
+        return this
+    }
+
+    override fun addCleanup(cleanup: Listener): StreamImpl<A> {
+        synchronized(finalizers) {
+            finalizers.add(cleanup)
+        }
         return this
     }
 
