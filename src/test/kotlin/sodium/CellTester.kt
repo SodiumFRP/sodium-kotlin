@@ -3,7 +3,6 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.Node
 import sodium.impl.Transaction
-import sodium.impl.dump
 import java.util.ArrayList
 import java.util.Arrays
 
@@ -13,6 +12,7 @@ public class CellTester : TestCase() {
         val b = e.hold(0)
         val out = ArrayList<Int>()
         val l = Operational.updates(b).listen { out.add(it.value) }
+        System.gc()
         e.send(2)
         e.send(9)
         l.unlisten()
@@ -26,6 +26,7 @@ public class CellTester : TestCase() {
         val l = trigger.snapshot(b) { x, y ->
             "${x.value} ${y.value}"
         }.listen { out.add(it.value) }
+        System.gc()
         trigger.send(100L)
         b.send(2)
         trigger.send(200L)
@@ -51,6 +52,7 @@ public class CellTester : TestCase() {
                 out.add(e.getMessage())
             }
         }
+        System.gc()
         trigger.send(100)
         b.send(2)
         trigger.send(201)
@@ -65,6 +67,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = b.listen { out.add(it.value) }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -85,6 +88,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             Operational.value(b).map { it.value + 100 }.listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -107,6 +111,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             doubleUp(Operational.value(b)).map { it.value + 100 }.listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -121,6 +126,7 @@ public class CellTester : TestCase() {
                 snd.value
             }.listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -134,6 +140,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             Operational.value(bi).snapshot(bc).listen { out.add(it.value) }
         }
+        System.gc()
         bc.send('b')
         bi.send(2)
         bc.send('c')
@@ -149,6 +156,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             doubleUp(Operational.value(bi)).snapshot(bc).listen { out.add(it.value) }
         }
+        System.gc()
         bc.send('b')
         bi.send(2)
         bc.send('c')
@@ -166,6 +174,7 @@ public class CellTester : TestCase() {
                 x.value + y.value
             }.listen { out.add(it.value) }
         }
+        System.gc()
         bi.send(1)
         bj.send(4)
         l.unlisten()
@@ -180,6 +189,7 @@ public class CellTester : TestCase() {
                 true
             }.listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -194,6 +204,7 @@ public class CellTester : TestCase() {
                 true
             }.listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -206,6 +217,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             Operational.value(b).once().listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -218,6 +230,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             doubleUp(Operational.value(b)).once().listen { out.add(it.value) }
         }
+        System.gc()
         b.send(2)
         b.send(7)
         l.unlisten()
@@ -228,8 +241,10 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val value = Operational.value(b)
+        System.gc()
         b.send(8)
         val l = value.listen { out.add(it.value) }
+        System.gc()
         b.send(2)
         l.unlisten()
         TestCase.assertEquals(Arrays.asList(2), out)
@@ -238,16 +253,19 @@ public class CellTester : TestCase() {
     public fun testMapB() {
         val b = Sodium.cellSink(6)
         val out = ArrayList<String>()
-        val l = b.map { it.value.toString() }.listen { out.add(it.value) }
-        dump(b)
+        val l = b.map { it.value.toString() }.listen {
+            out.add(it.value)
+        }
+        System.gc()
+        //dump(b)
         b.send(8)
         Sodium.tx {
             b.send(7)
             b.send(9)
         }
         l.unlisten()
-        System.gc()
-        dump(b)
+        //System.gc()
+        //dump(b)
         TestCase.assertEquals(Arrays.asList("6", "8", "9"), out)
     }
 
@@ -257,8 +275,10 @@ public class CellTester : TestCase() {
         val bm = b.map {
             it.value.toString()
         }
+        System.gc()
         b.send(2)
         val l = bm.listen { out.add(it.value) }
+        System.gc()
         b.send(8)
         l.unlisten()
         TestCase.assertEquals(Arrays.asList("2", "8"), out)
@@ -282,6 +302,7 @@ public class CellTester : TestCase() {
         }
         val out = ArrayList<String>()
         val l = pair.listen { out.add(it.value) }
+        System.gc()
         e.send(2)
         e.send(3)
         l.unlisten()
@@ -300,6 +321,7 @@ public class CellTester : TestCase() {
         }
         val out = ArrayList<Int>()
         val l = sum_out.listen { out.add(it.value) }
+        System.gc()
         ea.send(2)
         ea.send(3)
         ea.send(1)
@@ -315,6 +337,7 @@ public class CellTester : TestCase() {
             a.value + s.value to a.value + s.value
         }
         val l = sum.listen { out.add(it.value) }
+        System.gc()
         ea.send(5)
         ea.send(7)
         ea.send(1)
@@ -331,6 +354,7 @@ public class CellTester : TestCase() {
             a.value + s.value
         }
         val l = sum.listen { out.add(it.value) }
+        System.gc()
         ea.send(5)
         ea.send(7)
         ea.send(1)
@@ -365,6 +389,7 @@ public class CellTester : TestCase() {
         }
         val eTick = Sodium.streamSink<Unit>()
         val l = eTick.snapshot(value).listen { out.add(it.value) }
+        System.gc()
         eTick.send(Unit)
         l.unlisten()
         TestCase.assertEquals(Arrays.asList("cheese"), out)
