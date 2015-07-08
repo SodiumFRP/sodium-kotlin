@@ -1,7 +1,5 @@
 package sodium.impl
 
-import sodium.Listener
-
 class ListenerImplementation<A>(
         /**
          * It's essential that we keep the listener alive while the caller holds
@@ -13,7 +11,7 @@ class ListenerImplementation<A>(
          * a weak reference.
          */
         private var action: Any?,
-        private var target: Node.Target<A>?) : Listener {
+        private var target: Node.Target<A>?) : ListenerImpl() {
 
     override fun unlisten() {
         synchronized (Transaction.listenersLock) {

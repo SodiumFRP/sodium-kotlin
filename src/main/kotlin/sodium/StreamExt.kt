@@ -43,10 +43,10 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     Transaction.apply2 {
         val l1 = ea.listen(it, left, handler)
         val l2 = eb.listen(it, right, handler)
-        out.unsafeAddCleanup(l1).unsafeAddCleanup(l2)
+        out.addCleanup(l1).addCleanup(l2)
     }
 
-    return out.unsafeAddCleanup(object : Listener {
+    return out.addCleanup(object : ListenerImpl() {
         override fun unlisten() {
             left.unlink(node_target)
         }
@@ -114,5 +114,5 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
             }
         }
     }
-    return out.unsafeAddCleanup(listener)
+    return out.addCleanup(listener)
 }

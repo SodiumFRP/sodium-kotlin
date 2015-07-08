@@ -4,10 +4,11 @@ import sodium.*
 import sodium.Stream
 import java.util.ArrayList
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicReference
 
 public abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
-    private val finalizers = ArrayList<Listener>()
+    private val finalizers = AtomicReference<ListenerImpl>()
     abstract val firings: List<Event<A>>
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
@@ -61,7 +62,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.unsafeAddCleanup(l)
+        return out.addCleanup(l)
     }
 
     override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
@@ -71,7 +72,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 out.send(trans2, (beh as CellImpl<B>).sampleNoTrans())
             }
         }
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 
     override fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
@@ -83,7 +84,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 
     /**
@@ -104,14 +105,14 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.unsafeAddCleanup(l1)
+        return out.addCleanup(l1)
     }
 
     fun coalesce(transaction: Transaction, combine: (Event<A>, Event<A>) -> A): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val handler = CoalesceHandler(combine, out)
         val listener = listen(transaction, out.node, handler)
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 
     /**
@@ -124,7 +125,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
         val out = StreamWithSend<A>()
         val listener = listen(trans, out.node, LastOnlyHandler(out, firings))
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 
     override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
@@ -140,7 +141,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.unsafeAddCleanup(l)
+        return out.addCleanup(l)
     }
 
     override fun filterNotNull(): StreamImpl<A> {
@@ -165,7 +166,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 
     override fun <B, S> collect(initState: S, f: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
@@ -218,26 +219,19 @@ public abstract class StreamImpl<A> : Stream<A> {
             }
         }
         val listener = la[0]
-        return if (listener == null) this else out.unsafeAddCleanup(listener)
-    }
-
-    fun unsafeAddCleanup(cleanup: Listener): StreamImpl<A> {
-        synchronized(finalizers) {
-            finalizers.add(cleanup)
-        }
-        return this
+        return if (listener == null) this else out.addCleanup(listener)
     }
 
     override fun addCleanup(cleanup: Listener): StreamImpl<A> {
-        synchronized(finalizers) {
-            finalizers.add(cleanup)
-        }
+        (cleanup as ListenerImpl).next = finalizers.getAndSet(cleanup)
         return this
     }
 
     protected fun finalize() {
-        for (l in finalizers) {
-            l.unlisten()
+        var current = finalizers.getAndSet(null)
+        while (current != null) {
+            current.unlisten()
+            current = current.next
         }
     }
 
@@ -254,6 +248,6 @@ public abstract class StreamImpl<A> : Stream<A> {
             }
         }
 
-        return out.unsafeAddCleanup(listener)
+        return out.addCleanup(listener)
     }
 }

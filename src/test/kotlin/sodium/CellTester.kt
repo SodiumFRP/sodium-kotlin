@@ -3,6 +3,7 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.Node
 import sodium.impl.Transaction
+import sodium.impl.dump
 import java.util.ArrayList
 import java.util.Arrays
 
@@ -257,15 +258,15 @@ public class CellTester : TestCase() {
             out.add(it.value)
         }
         System.gc()
-        //dump(b)
+        dump(b)
         b.send(8)
         Sodium.tx {
             b.send(7)
             b.send(9)
         }
         l.unlisten()
-        //System.gc()
-        //dump(b)
+        System.gc()
+        dump(b)
         TestCase.assertEquals(Arrays.asList("6", "8", "9"), out)
     }
 

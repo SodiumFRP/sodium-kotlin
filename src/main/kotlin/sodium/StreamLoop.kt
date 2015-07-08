@@ -21,7 +21,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
                 send(trans, value)
             }
         }
-        unsafeAddCleanup(listener)
+        addCleanup(listener)
     }
 }
 

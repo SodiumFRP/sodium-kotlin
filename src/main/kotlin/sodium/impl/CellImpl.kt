@@ -77,7 +77,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
             out.send(it, sampleNoTrans())
         }
         val l = stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
-        return out.unsafeAddCleanup(l)
+        return out.addCleanup(l)
     }
 
     override fun <B> map(transform: (Event<A>) -> B): Cell<B> {
@@ -85,7 +85,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
             val initial = Lazy.lift(transform, sampleLazy(it))
             val mappedStream = StreamWithSend<B>()
             val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, stream.firings, transform))
-            mappedStream.unsafeAddCleanup(l)
+            mappedStream.addCleanup(l)
             LazyCell<B>(mappedStream, true, initial)
         }
     }
@@ -279,7 +279,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 //                        applyHandler(trans1)
 //                }
 //
-//                out.unsafeAddCleanup(l1).unsafeAddCleanup(l2).unsafeAddCleanup(object : Listener() {
+//                out.addCleanup(l1).addCleanup(l2).addCleanup(object : Listener() {
 //                    override fun unlisten() {
 //                        in_target.unlinkTo(node_target)
 //                    }
@@ -310,7 +310,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 //                        out.send(trans3, a)
 //                    }
 //                }
-//                out.unsafeAddCleanup(listener).holdLazy(za)
+//                out.addCleanup(listener).holdLazy(za)
 //            }
 //        }
 //
@@ -332,7 +332,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 //                        ea.listen(out.node, trans2, true, h2)
 //                    }
 //                }
-//                out.unsafeAddCleanup(l1)
+//                out.addCleanup(l1)
 //            }
 //        }
 //    }
