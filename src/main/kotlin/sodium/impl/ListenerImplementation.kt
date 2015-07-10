@@ -10,7 +10,7 @@ class ListenerImplementation<A>(
          * It's also essential that we keep the action alive, since the node uses
          * a weak reference.
          */
-        private var action: Any?,
+        var action: Any?,
         private var target: Node.Target<A>?) : ListenerImpl() {
 
     override fun unlisten() {

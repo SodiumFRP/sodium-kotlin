@@ -5,12 +5,11 @@ import java.lang.ref.WeakReference
 import java.util.HashSet
 
 public class Node<A>(var rank: Long) : Comparable<Node<*>> {
-    var debugInfo: DebugInfo? = null
     val listeners = HashSet<Target<A>>()
 
     @suppress("NOTHING_TO_INLINE")
     inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Target<A> {
-        val target = Target<A>(action, node)
+        val target = Target(action, node)
         listeners.add(target)
         return target
     }

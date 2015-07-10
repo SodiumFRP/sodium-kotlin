@@ -1,15 +1,14 @@
 package sodium
 
-import sodium.impl.DebugInfo
 import sodium.impl.StreamImpl
 import sodium.impl.StreamWithSend
 import sodium.impl.Transaction
+import sodium.impl.debugCollector
 
 public class StreamLoop<A> : StreamWithSend<A>() {
     var assigned: Boolean = false
 
     init {
-        node.debugInfo = DebugInfo()
         if (Transaction.getCurrent() == null)
             throw AssertionError("StreamLoop/CellLoop must be used within an explicit transaction")
     }
@@ -23,6 +22,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
                 send(trans, value)
             }
         }
+        debugCollector?.visitPrimitive(listener)
         addCleanup(listener)
     }
 }

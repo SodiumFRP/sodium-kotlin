@@ -7,6 +7,10 @@ import java.util.ArrayList
 import java.util.Arrays
 
 public class CellTester : TestCase() {
+    init {
+        Sodium.enableDebugMode()
+    }
+
     public fun testHold() {
         val e = Sodium.streamSink<Int>()
         val b = e.hold(0)

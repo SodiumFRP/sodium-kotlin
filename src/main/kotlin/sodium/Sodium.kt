@@ -34,4 +34,7 @@ public object Sodium {
         }
     }
 
+    public fun enableDebugMode() {
+        debugCollector = DebugCollector()
+    }
 }

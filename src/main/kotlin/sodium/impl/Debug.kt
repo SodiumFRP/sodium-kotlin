@@ -1,8 +1,10 @@
 package sodium.impl
 
 import sodium.Cell
+import sodium.Listener
 import sodium.Stream
 import java.util.HashSet
+import java.util.WeakHashMap
 
 private fun dump(sb: Appendable, depth: Int, node: Node<*>): Unit = with(sb) {
     node.listeners.forEach {
@@ -11,7 +13,10 @@ private fun dump(sb: Appendable, depth: Int, node: Node<*>): Unit = with(sb) {
 
         val action = it.action.get()
         if (action != null) {
-            direction(formatTarget(it), formatAction(action))
+            append('\n')
+            single(formatTarget(it))
+            append(" -> ")
+            formatAction(action)
         }
 
         dump(sb, depth + 2, it.node)
@@ -42,28 +47,6 @@ private fun getAllNodes(out: HashSet<Node<*>>, node: Node<*>) {
     node.listeners.forEach {
         getAllNodes(out, it.node)
     }
-}
-
-private fun dumpTargets(sb: Appendable, depth: Int, target: Node.Target<*>): Unit = with(sb) {
-    append('\n')
-    append("subgraph cluster_${target.hashCode()} {")
-    append('\n')
-    append("""label="Target_${target.hashCode()}";""")
-    append('\n')
-    single(formatNode(target.node))
-    append()
-    val action = target.action.get()
-    if (action != null) {
-        append('\n')
-        single(formatAction(action))
-    }
-    append("\n}")
-
-    target.node.listeners.forEach {
-        dumpTargets(sb, depth + 2, it)
-    }
-
-    Unit
 }
 
 private fun Appendable.single(from: String) {
@@ -105,13 +88,21 @@ public fun dump(stream: Stream<*>) {
 }
 
 private fun labelNode(node: Node<*>): String {
-    val info = node.debugInfo ?: return formatNode(node) + """\nrank=${node.rank}"""
-    return info.opName + " - " + info.fileAndLine + """\nrank=${node.rank}"""
+    return formatNode(node) + """\nrank=${node.rank}"""
 }
 
 private fun formatNode(node: Node<*>) = "Node:" +  Integer.toString(System.identityHashCode(node), 16).toUpperCase()
 private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(System.identityHashCode(node), 16).toUpperCase()
-private fun formatAction(action: Any) = "action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase()
+
+private fun Appendable.formatAction(action: Any) {
+    val info = debugCollector?.info?.get(action)
+    val baseName = "action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase()
+    if (info == null) {
+        single(baseName)
+    } else {
+        append("""{"$baseName" [label="${info.opName} - ${info.fileAndLine}"]}""")
+    }
+}
 
 private fun fileAndLine(element: StackTraceElement): String {
     val fileName = element.getFileName()
@@ -119,20 +110,26 @@ private fun fileAndLine(element: StackTraceElement): String {
     return "$fileName:$line"
 }
 
-public class DebugInfo() {
-    val opName: String
-    val fileAndLine: String
+public class DebugInfo(val opName: String,
+                       val fileAndLine: String)
 
-    init {
+public class DebugCollector {
+    val info = WeakHashMap<Any, DebugInfo>()
+
+    public fun visitPrimitive(listener: Listener) {
         val trace = Thread.currentThread().getStackTrace()
         val e2 = trace.get(2)
-        opName = e2.getMethodName()
+        val opName = e2.getMethodName()
         val e3 = trace.get(3)
         val e = if (e3.getClassName() == e2.getClassName() && e3.getMethodName() == e2.getMethodName()) {
             trace.get(4)
         } else {
             e3
         }
-        fileAndLine = fileAndLine(e)
+        val fileAndLine = fileAndLine(e)
+
+        info.put((listener as ListenerImplementation<*>).action, DebugInfo(opName, fileAndLine))
     }
 }
+
+public var debugCollector: DebugCollector? = null

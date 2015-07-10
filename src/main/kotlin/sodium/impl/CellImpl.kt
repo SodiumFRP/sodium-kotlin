@@ -34,6 +34,8 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 
         this.listener = listener
         this.updates = updates
+
+        debugCollector?.visitPrimitive(listener)
     }
 
     protected open fun setupValue() {

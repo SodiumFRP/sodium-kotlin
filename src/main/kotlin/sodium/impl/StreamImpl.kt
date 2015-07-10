@@ -12,7 +12,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     abstract val firings: List<Event<A>>
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
-        return Transaction.apply2 {
+        val listener = Transaction.apply2 {
             listen(it, Node.NULL) { trans2, value ->
                 try {
                     action(value)
@@ -22,6 +22,8 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
+        debugCollector?.visitPrimitive(listener)
+        return listener
     }
 
     fun listen(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
@@ -55,7 +57,6 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun <B> map(transform: (Event<A>) -> B): StreamImpl<B> {
         val out = StreamWithSend<B>()
-        out.node.debugInfo = DebugInfo()
         val l = Transaction.apply2 {
             listen(it, out.node) { trans2, value ->
                 out.send(trans2) {
@@ -63,23 +64,23 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
+        debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)
     }
 
     override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
         val out = StreamWithSend<B>()
-        out.node.debugInfo = DebugInfo()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
                 out.send(trans2, (beh as CellImpl<B>).sampleNoTrans())
             }
         }
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
     override fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
         val out = StreamWithSend<C>()
-        out.node.debugInfo = DebugInfo()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
                 out.send(trans2) {
@@ -87,6 +88,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
@@ -96,8 +98,7 @@ public abstract class StreamImpl<A> : Stream<A> {
      */
     override fun defer(): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        out.node.debugInfo = DebugInfo()
-        val l1 = Transaction.apply2 {
+        val listener = Transaction.apply2 {
             listen(it, out.node) { trans, a ->
                 trans.post {
                     val newTrans = Transaction()
@@ -109,14 +110,15 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-        return out.addCleanup(l1)
+        debugCollector?.visitPrimitive(listener)
+        return out.addCleanup(listener)
     }
 
     fun coalesce(transaction: Transaction, combine: (Event<A>, Event<A>) -> A): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        out.node.debugInfo = DebugInfo()
         val handler = CoalesceHandler(combine, out)
         val listener = listen(transaction, out.node, handler)
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
@@ -129,14 +131,13 @@ public abstract class StreamImpl<A> : Stream<A> {
 //        }
 
         val out = StreamWithSend<A>()
-        out.node.debugInfo = DebugInfo()
         val listener = listen(trans, out.node, LastOnlyHandler(out, firings))
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
     override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        out.node.debugInfo = DebugInfo()
         val l = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
                 try {
@@ -148,6 +149,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
+        debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)
     }
 
@@ -162,7 +164,6 @@ public abstract class StreamImpl<A> : Stream<A> {
 //            if (predicateValue) event else null
 //        }.filterNotNull() as StreamImpl<A>
         val out = StreamWithSend<A>()
-        out.node.debugInfo = DebugInfo()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
                 try {
@@ -174,6 +175,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 

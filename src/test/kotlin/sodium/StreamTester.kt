@@ -9,6 +9,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 public class StreamTester : TestCase() {
+    init {
+        Sodium.enableDebugMode()
+    }
+
     public fun testSendStream() {
         val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
