@@ -17,8 +17,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 try {
                     action(value)
                 } catch (e: Exception) {
-                    // Drop any exception.
-                    // If you want to handle exceptions use map.
+                    Sodium.unhandledExceptions.send(e)
                 }
             }
         }
@@ -145,7 +144,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    // do not send if error
+                    Sodium.unhandledExceptions.send(e)
                 }
             }
         }
@@ -160,9 +159,6 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun gate(predicate: Cell<Boolean>): StreamImpl<A> {
-//        return snapshot(predicate) { event, predicateValue ->
-//            if (predicateValue) event else null
-//        }.filterNotNull() as StreamImpl<A>
         val out = StreamWithSend<A>()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
@@ -171,7 +167,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    // do not send if error
+                    Sodium.unhandledExceptions.send(e)
                 }
             }
         }

@@ -37,4 +37,6 @@ public object Sodium {
     public fun enableDebugMode() {
         debugCollector = DebugCollector()
     }
+
+    public val unhandledExceptions: StreamSinkImpl<Exception> = StreamSinkImpl()
 }
