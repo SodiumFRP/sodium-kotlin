@@ -32,7 +32,7 @@ private fun Appendable.declareNodeStyle(node: Node<*>) {
     allNodes.forEach {
         append('\n')
         single(formatNode(it))
-        append(""" [label="${formatNode(it)}\nrank=${it.rank}"];""")
+        append(""" [label="${labelNode(it)}"];""")
     }
 }
 
@@ -104,6 +104,35 @@ public fun dump(stream: Stream<*>) {
     dump(System.out, (stream as StreamImpl<*>).node)
 }
 
+private fun labelNode(node: Node<*>): String {
+    val info = node.debugInfo ?: return formatNode(node) + """\nrank=${node.rank}"""
+    return info.opName + " - " + info.fileAndLine + """\nrank=${node.rank}"""
+}
+
 private fun formatNode(node: Node<*>) = "Node:" +  Integer.toString(System.identityHashCode(node), 16).toUpperCase()
 private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(System.identityHashCode(node), 16).toUpperCase()
 private fun formatAction(action: Any) = "action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase()
+
+private fun fileAndLine(element: StackTraceElement): String {
+    val fileName = element.getFileName()
+    val line = element.getLineNumber()
+    return "$fileName:$line"
+}
+
+public class DebugInfo() {
+    val opName: String
+    val fileAndLine: String
+
+    init {
+        val trace = Thread.currentThread().getStackTrace()
+        val e2 = trace.get(2)
+        opName = e2.getMethodName()
+        val e3 = trace.get(3)
+        val e = if (e3.getClassName() == e2.getClassName() && e3.getMethodName() == e2.getMethodName()) {
+            trace.get(4)
+        } else {
+            e3
+        }
+        fileAndLine = fileAndLine(e)
+    }
+}

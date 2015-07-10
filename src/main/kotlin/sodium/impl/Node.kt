@@ -5,6 +5,7 @@ import java.lang.ref.WeakReference
 import java.util.HashSet
 
 public class Node<A>(var rank: Long) : Comparable<Node<*>> {
+    var debugInfo: DebugInfo? = null
     val listeners = HashSet<Target<A>>()
 
     @suppress("NOTHING_TO_INLINE")

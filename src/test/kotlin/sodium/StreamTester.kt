@@ -3,6 +3,7 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.StreamImpl
 import sodium.impl.Transaction
+import sodium.impl.dump
 import java.util.ArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -80,6 +81,7 @@ public class StreamTester : TestCase() {
             out.add(it.value)
         }
         System.gc()
+        dump(e)
         e.send(5)
         l.unlisten()
         TestCase.assertEquals(listOf("5"), out)
@@ -260,6 +262,7 @@ public class StreamTester : TestCase() {
         }
         val l = sum.listen { out.add(it.value) }
         System.gc()
+        dump(ea)
         ea.send(5)
         ea.send(7)
         ea.send(1)

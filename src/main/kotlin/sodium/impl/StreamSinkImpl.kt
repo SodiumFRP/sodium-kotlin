@@ -6,6 +6,10 @@ import sodium.StreamSink
 import sodium.Value
 
 public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
+    init {
+        node.debugInfo = DebugInfo()
+    }
+
     override fun send(a: A) {
         Transaction.apply2 {
             if (Transaction.inCallback > 0)
