@@ -1,6 +1,7 @@
 package sodium.impl
 
 import sodium.*
+import sodium.Error
 import sodium.Stream
 import java.util.ArrayList
 import java.util.concurrent.Executor
@@ -17,7 +18,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                 try {
                     action(value)
                 } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(e)
+                    Sodium.unhandledExceptions.send(trans2, Value(e))
                 }
             }
         }
@@ -144,7 +145,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(e)
+                    Sodium.unhandledExceptions.send(trans2, Value(e))
                 }
             }
         }
@@ -167,7 +168,7 @@ public abstract class StreamImpl<A> : Stream<A> {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(e)
+                    Sodium.unhandledExceptions.send(trans2, Value(e))
                 }
             }
         }
@@ -180,18 +181,44 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun <B, S> collectLazy(initState: () -> S, f: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
+        val eb = StreamWithSend<B>()
+        val es = StreamWithSend<S>()
+        val state = LazyCell(es, false) {
+            try {
+                Value(initState())
+            } catch (e: Exception) {
+                Error(e)
+            }
+        }
+
         return Transaction.apply2 {
-            val es = StreamLoop<S>()
-            val s = es.holdLazy(initState)
-            val ebs = snapshot(s, f)
-            val eb = ebs.map {
-                it.value.first
+            val listener1 = listen(it, eb.node) { trans2, a ->
+
             }
-            val es_out = ebs.map {
-                it.value.second
+            val listener2 = listen(it, es.node) { trans2, a ->
+                try {
+                    val (b, s) = f(a, state.sampleNoTrans())
+                    es.send(trans2, Value(s))
+                    eb.send(trans2, Value(b))
+                } catch (e: Exception) {
+                    es.send(trans2, Error(e))
+                    eb.send(trans2, Error(e))
+                }
             }
-            es.loop(es_out)
-            eb
+            debugCollector?.visitPrimitive(listener1)
+            debugCollector?.visitPrimitive(listener2)
+            eb.addCleanup(listener1).addCleanup(listener2)
+//            val es = StreamLoop<S>()
+//            val s = es.holdLazy(initState)
+//            val ebs = snapshot(s, f)
+//            val eb = ebs.map {
+//                it.value.first
+//            }
+//            val es_out = ebs.map {
+//                it.value.second
+//            }
+//            es.loop(es_out)
+//            eb
         }
     }
 

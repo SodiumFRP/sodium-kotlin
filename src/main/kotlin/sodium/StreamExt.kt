@@ -43,6 +43,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     Transaction.apply2 {
         val l1 = ea.listen(it, left, handler)
         val l2 = eb.listen(it, right, handler)
+        debugCollector?.visitPrimitive(l1)
         out.addCleanup(l1).addCleanup(l2)
     }
 

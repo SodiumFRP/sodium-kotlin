@@ -85,7 +85,7 @@ public class StreamTester : TestCase() {
             out.add(it.value)
         }
         System.gc()
-        dump(e)
+        //dump(e)
         e.send(5)
         l.unlisten()
         TestCase.assertEquals(listOf("5"), out)
@@ -165,7 +165,7 @@ public class StreamTester : TestCase() {
             e1.send("left2a")
             e1.send("left2b")
         }
-        //dump(System.out, 0, (e1 as StreamImpl<*>).node)
+        dump(e1)
         l.unlisten()
         TestCase.assertEquals(listOf(
                 "left1a", "left1b", "right1a", "right1b",
