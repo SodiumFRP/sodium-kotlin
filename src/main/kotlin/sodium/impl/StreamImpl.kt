@@ -68,23 +68,23 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.addCleanup(l)
     }
 
-    override fun <B> snapshot(beh: Cell<B>): StreamImpl<B> {
+    override fun <B> snapshot(cell: Cell<B>): StreamImpl<B> {
         val out = StreamWithSend<B>()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
-                out.send(trans2, (beh as CellImpl<B>).sampleNoTrans())
+                out.send(trans2, (cell as CellImpl<B>).sampleNoTrans())
             }
         }
         debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
-    override fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
+    override fun <B, C> snapshot(cell: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
         val out = StreamWithSend<C>()
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, a ->
                 out.send(trans2) {
-                    transform(a, (b as CellImpl<B>).sampleNoTrans())
+                    transform(a, (cell as CellImpl<B>).sampleNoTrans())
                 }
             }
         }
@@ -92,10 +92,6 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.addCleanup(listener)
     }
 
-    /**
-     * Push this event occurrence onto a new transaction. Same as split() but works
-     * on a single value.
-     */
     override fun defer(): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val listener = Transaction.apply2 {
@@ -126,10 +122,6 @@ public abstract class StreamImpl<A> : Stream<A> {
      * Clean up the output by discarding any firing other than the last one.
      */
     fun lastFiringOnly(trans: Transaction): StreamImpl<A> {
-//        return coalesce(trans) {first, second ->
-//            second.value
-//        }
-
         val out = StreamWithSend<A>()
         val listener = listen(trans, out.node, LastOnlyHandler(out, firings))
         debugCollector?.visitPrimitive(listener)
@@ -180,7 +172,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         return collectLazy({ initState }, f)
     }
 
-    override fun <B, S> collectLazy(initState: () -> S, f: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
+    override fun <B, S> collectLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
         val eb = StreamWithSend<B>()
         val es = StreamWithSend<S>()
         val state = LazyCell(es, false) {
@@ -197,7 +189,7 @@ public abstract class StreamImpl<A> : Stream<A> {
             }
             val listener2 = listen(it, es.node) { trans2, a ->
                 try {
-                    val (b, s) = f(a, state.sampleNoTrans())
+                    val (b, s) = transform(a, state.sampleNoTrans())
                     es.send(trans2, Value(s))
                     eb.send(trans2, Value(b))
                 } catch (e: Exception) {
@@ -222,15 +214,15 @@ public abstract class StreamImpl<A> : Stream<A> {
         }
     }
 
-    override fun <S> accum(initState: S, f: (Event<A>, Event<S>) -> S): Cell<S> {
-        return accumLazy({ initState }, f)
+    override fun <S> accum(initState: S, transform: (Event<A>, Event<S>) -> S): Cell<S> {
+        return accumLazy({ initState }, transform)
     }
 
-    override fun <S> accumLazy(initState: () -> S, f: (Event<A>, Event<S>) -> S): Cell<S> {
+    override fun <S> accumLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> S): Cell<S> {
         return Transaction.apply2 {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
-            val es_out = snapshot(s, f)
+            val es_out = snapshot(s, transform)
             es.loop(es_out)
             es_out.holdLazy(initState)
         }

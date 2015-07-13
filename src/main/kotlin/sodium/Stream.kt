@@ -47,18 +47,18 @@ public interface Stream<out A> {
      * Transform an event with a generalized state loop (a mealy machine). The function
      * is passed the input and the old state and returns the new state and output value.
      */
-    fun <B, S> collectLazy(initState: () -> S, f: (Event<A>, Event<S>) -> Pair<B, S>): Stream<B>
+    fun <B, S> collectLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> Pair<B, S>): Stream<B>
 
     /**
      * Accumulate on input event, outputting the new state each time.
      */
-    fun <S> accum(initState: S, f: (Event<A>, Event<S>) -> S): Cell<S>
+    fun <S> accum(initState: S, transform: (Event<A>, Event<S>) -> S): Cell<S>
 
     /**
      * Accumulate on input event, outputting the new state each time.
      * Variant that takes a lazy initial state.
      */
-    fun <S> accumLazy(initState: () -> S, f: (Event<A>, Event<S>) -> S): Cell<S>
+    fun <S> accumLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> S): Cell<S>
 
     /**
      * Throw away all event occurrences except for the first one.
@@ -68,14 +68,14 @@ public interface Stream<out A> {
     /**
      * Variant of snapshot that throws away the event's value and captures the behavior's.
      */
-    fun <B> snapshot(beh: Cell<B>): Stream<B>
+    fun <B> snapshot(cell: Cell<B>): Stream<B>
 
     /**
      * Sample the behavior at the time of the event firing. Note that the 'current value'
      * of the behavior that's sampled is the value as at the start of the transaction
      * before any state changes of the current transaction are applied through 'hold's.
      */
-    fun <B, C> snapshot(b: Cell<B>, transform: (Event<A>, Event<B>) -> C): Stream<C>
+    fun <B, C> snapshot(cell: Cell<B>, transform: (Event<A>, Event<B>) -> C): Stream<C>
 
     /**
      * Attach a listener to this stream so that its {@link Listener#unlisten()} is invoked

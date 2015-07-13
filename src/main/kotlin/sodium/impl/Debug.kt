@@ -6,29 +6,44 @@ import sodium.Stream
 import java.util.HashSet
 import java.util.WeakHashMap
 
-private fun dump(sb: Appendable, depth: Int, node: Node<*>): Unit = with(sb) {
-    node.listeners.forEach {
-        direction(formatNode(node), formatTarget(it))
-        direction(formatTarget(it), formatNode(it.node))
-
-        val action = it.action.get()
-        if (action != null) {
-            append('\n')
-            single(formatTarget(it))
-            append(" -> ")
-            formatAction(action)
-        }
-
-        dump(sb, depth + 2, it.node)
-    }
-
-    Unit
+private abstract data class Direction<A, B>(val from: A, val to: B) {
+    public abstract fun format(sb: Appendable)
 }
 
-private fun Appendable.declareNodeStyle(node: Node<*>) {
+private fun collectDirections(out: MutableSet<Direction<*, *>>, node: Node<*>) {
+    node.listeners.forEach {
+        out.add(object : Direction<Node<*>, Node.Target<*>>(node, it) {
+            override fun format(sb: Appendable) {
+                sb.direction(formatNode(from), formatTarget(to))
+            }
+        })
+        out.add(object : Direction<Node.Target<*>, Node<*>>(it, it.node) {
+            override fun format(sb: Appendable) {
+                sb.direction(formatTarget(from), formatNode(to))
+            }
+        })
+        val action = it.action.get()
+        if (action != null) {
+            out.add(object : Direction<Node.Target<*>, Any>(it, action) {
+                override fun format(sb: Appendable) {
+                    sb.append('\n')
+                    sb.single(formatTarget(from))
+                    sb.append(" -> ")
+                    sb.formatAction(to)
+                }
+            })
+        }
+
+        collectDirections(out, it.node)
+    }
+}
+
+private fun Appendable.declareNodeStyle(vararg nodes: Node<*>) {
     append("\n{node [shape=box;style=filled;color=lightgrey;]")
     val allNodes = HashSet<Node<*>>()
-    getAllNodes(allNodes, node)
+    nodes.forEach {
+        getAllNodes(allNodes, it)
+    }
     allNodes.forEach {
         single(formatNode(it))
         append(';')
@@ -62,29 +77,29 @@ private fun Appendable.direction(from: String, to: String) {
     single(to)
 }
 
-public fun dump(sb: Appendable, node: Node<*>): Unit = with(sb) {
+public fun dump(sb: Appendable, vararg nodes: Node<*>): Unit = with(sb) {
     append('\n')
     append("digraph G {")
-    declareNodeStyle(node)
-    //dumpTargets(sb, 2, Node.Target<Any>(null, node))
-    dump(sb, 2, node)
+    declareNodeStyle(*nodes)
+
+    val directions = HashSet<Direction<*, *>>()
+    nodes.forEach {
+        collectDirections(directions, it)
+    }
+    directions.forEach {
+        it.format(sb)
+    }
+
     append("\n}")
     Unit
 }
-
-private fun Appendable.spaces(depth: Int) {
-    for (i in 1 rangeTo depth) {
-        append(' ')
-    }
-}
-
 
 public fun dump(cell: Cell<*>) {
     dump(System.out, (cell as CellImpl<*>).stream.node)
 }
 
-public fun dump(stream: Stream<*>) {
-    dump(System.out, (stream as StreamImpl<*>).node)
+public fun dump(vararg stream: Stream<*>) {
+    dump(System.out, *(stream.map { (it as StreamImpl<*>).node }.toTypedArray()))
 }
 
 private fun labelNode(node: Node<*>): String {
