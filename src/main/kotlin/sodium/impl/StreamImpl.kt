@@ -260,7 +260,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         }
     }
 
-    override fun onExecutor(executor: Executor): StreamImpl<A> {
+    override fun defer(executor: Executor): StreamImpl<A> {
         val out = StreamWithSend<A>()
 
         val listener = Transaction.apply2 {

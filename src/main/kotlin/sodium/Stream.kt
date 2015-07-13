@@ -84,5 +84,5 @@ public interface Stream<out A> {
      */
     fun addCleanup(cleanup: Listener): Stream<A>
 
-    fun onExecutor(executor: Executor): Stream<A>
+    fun defer(executor: Executor): Stream<A>
 }

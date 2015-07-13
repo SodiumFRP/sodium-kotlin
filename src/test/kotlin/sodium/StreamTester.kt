@@ -327,7 +327,7 @@ public class StreamTester : TestCase() {
 
         val (l, s) = Sodium.tx {
             val s = streamSink<Unit>()
-            s.onExecutor(executor).listen {
+            s.defer(executor).listen {
                 threadId.set(1, Thread.currentThread().getId())
             } to s
         }
