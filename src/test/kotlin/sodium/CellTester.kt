@@ -399,4 +399,26 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList("cheese"), out)
     }
 
+    public fun testSwitchE() {
+        private class SE(val a: Char, val b: Char, val sw: Stream<Char>?)
+
+        val ese = Sodium.streamSink<SE>()
+        val ea = ese.map { it.value.a }
+        val eb = ese.map { it.value.b }
+        val bsw = ese.map { it.value.sw }.filterNotNull().hold(ea)
+        val out = ArrayList<Char>()
+        val eo = bsw.switchS()
+        val l = eo.listen { out.add(it.value) }
+        ese.send(SE('A', 'a', null))
+        ese.send(SE('B', 'b', null))
+        ese.send(SE('C', 'c', eb))
+        ese.send(SE('D', 'd', null))
+        ese.send(SE('E', 'e', ea))
+        ese.send(SE('F', 'f', null))
+        ese.send(SE('G', 'g', eb))
+        ese.send(SE('H', 'h', ea))
+        ese.send(SE('I', 'i', ea))
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList('A', 'B', 'C', 'd', 'e', 'F', 'G', 'h', 'I'), out)
+    }
 }

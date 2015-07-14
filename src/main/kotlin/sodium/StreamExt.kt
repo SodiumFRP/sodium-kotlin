@@ -117,3 +117,32 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     }
     return out.addCleanup(listener)
 }
+
+/**
+ * Unwrap a stream inside a cell to give a time-varying stream implementation.
+ */
+public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
+    val out = StreamWithSend<A>()
+    val listener = Transaction.apply2 {
+        val bea = this as CellImpl<Stream<A>?>
+
+        val l1 = try {
+            (bea.sampleNoTrans().value as? StreamImpl<A>)?.listen(it, out.node, DirectToOutHandler(out))
+        } catch (e: Exception) {
+            out.send(it, Error<A>(e))
+            null
+        }
+
+        bea.updates.listen(it, out.node, FlattenHandler(out, l1))
+    }
+    return out.addCleanup(listener)
+}
+
+public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
+    val out = StreamWithSend<A>()
+    val thiz = this as StreamImpl<Stream<A>?>
+    val listener = Transaction.apply2 {
+        thiz.listen(it, out.node, FlattenHandler(out))
+    }
+    return out.addCleanup(listener)
+}

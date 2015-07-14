@@ -1,8 +1,8 @@
 package sodium.impl
 
+import sodium.*
 import sodium.Error
-import sodium.Event
-import sodium.Value
+import sodium.Stream
 
 class CoalesceHandler<A>(
         private val transformation: (Event<A>, Event<A>) -> A,
@@ -62,5 +62,32 @@ class CellMapHandler<A, B>(
                 }
             }
         }
+    }
+}
+
+class DirectToOutHandler<A>(private val out: StreamWithSend<A>) : (Transaction, Event<A>) -> Unit {
+    override fun invoke(tx: Transaction, event: Event<A>) {
+        out.send(tx, event)
+    }
+}
+
+class FlattenHandler<A>(
+        private val out: StreamWithSend<A>,
+        private var currentListener: Listener? = null) : (Transaction, Event<Stream<A>?>) -> Unit {
+
+    override fun invoke(tx: Transaction, event: Event<Stream<A>?>) {
+        tx.last {
+            currentListener?.unlisten()
+
+            try {
+                currentListener = (event.value as? StreamImpl<A>)?.listen(tx, out.node, DirectToOutHandler(out))
+            } catch (e: Exception) {
+                out.send(tx, Error<A>(e))
+            }
+        }
+    }
+
+    protected fun finalize() {
+        currentListener?.unlisten()
     }
 }

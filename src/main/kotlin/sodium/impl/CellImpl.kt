@@ -315,28 +315,6 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 //                out.addCleanup(listener).holdLazy(za)
 //            }
 //        }
-//
-//        /**
-//         * Unwrap a stream inside a cell to give a time-varying stream implementation.
-//         */
-//        public fun <A> switchS(bea: Cell<Stream<A>>): Stream<A> {
-//            return Transaction.apply2 {
-//                val trans1 = it
-//                val out = StreamSink<A>()
-//                val h2 = { trans2: Transaction, a: A ->
-//                    out.send(trans2, a)
-//                }
-//                val currentListener: Listener = bea.sampleNoTrans().listen(out.node, trans1, false, h2)
-//                val l1 = bea.updates(trans1).listen(out.node, trans1, false) { trans2, ea ->
-//                    trans2.last {
-//                        currentListener.unlisten()
-//                        // TODO: do something with memory leak here (if any).
-//                        ea.listen(out.node, trans2, true, h2)
-//                    }
-//                }
-//                out.addCleanup(l1)
-//            }
-//        }
 //    }
 
     private class LazySample<A>(var cell: CellImpl<A>?) {

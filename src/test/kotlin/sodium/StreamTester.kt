@@ -3,7 +3,6 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.StreamImpl
 import sodium.impl.Transaction
-import sodium.impl.dump
 import java.util.ArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -165,7 +164,7 @@ public class StreamTester : TestCase() {
             e1.send("left2a")
             e1.send("left2b")
         }
-        dump(e1, e2)
+        //dump(e1, e2)
         l.unlisten()
         TestCase.assertEquals(listOf(
                 "left1a", "left1b", "right1a", "right1b",
@@ -266,7 +265,7 @@ public class StreamTester : TestCase() {
         }
         val l = sum.listen { out.add(it.value) }
         System.gc()
-        dump(ea)
+        //dump(ea)
         ea.send(5)
         ea.send(7)
         ea.send(1)
@@ -360,5 +359,71 @@ public class StreamTester : TestCase() {
 
         l.unlisten()
         TestCase.assertEquals(listOf(7), out)
+    }
+
+    public fun testFlatten() {
+        val out = ArrayList<Int>()
+        val sink = Sodium.streamSink<Int>()
+        val s1 = sink.map { it.value * 10 }
+        val s2 = sink.map { it.value * 100 }
+        val ss = Sodium.streamSink<Stream<Int>>()
+        val l = ss.flatten().listen { out.add(it.value) }
+
+        System.gc()
+
+        sink.send(1)
+
+        ss.send(s1)
+        sink.send(2)
+        sink.send(3)
+
+        Sodium.tx {
+            ss.send(s2)
+            sink.send(4)
+        }
+
+        sink.send(5)
+        sink.send(6)
+        ss.send(s1)
+        sink.send(7)
+
+        l.unlisten()
+        TestCase.assertEquals(listOf(20, 30, 40, 500, 600, 70), out)
+    }
+
+    public fun testFlatMap() {
+        val out = ArrayList<String>()
+        val sink1 = Sodium.streamSink<Int>()
+        val sink2 = Sodium.streamSink<String>()
+        val s1 = sink2.map { "A" + it.value }
+        val s2 = sink2.map { "B" + it.value }
+
+        val l = sink1.flatMap {
+            if (it.value % 2 == 0) {
+                s1
+            } else {
+                s2
+            }
+        }.listen { out.add(it.value) }
+
+        sink2.send("a")
+
+        sink1.send(1)
+        sink2.send("b")
+        sink2.send("c")
+
+        sink1.send(2)
+        sink2.send("d")
+        sink2.send("e")
+
+        Sodium.tx {
+            sink1.send(3)
+            sink2.send("f")
+        }
+
+        sink2.send("g")
+
+        l.unlisten()
+        TestCase.assertEquals(listOf("Bb", "Bc", "Ad", "Ae", "Af", "Bg"), out)
     }
 }

@@ -275,4 +275,10 @@ public abstract class StreamImpl<A> : Stream<A> {
 
         return out.addCleanup(listener)
     }
+
+    override fun <B> flatMap(transform: (Event<A>) -> Stream<B>): Stream<B> {
+        return Transaction.apply2 {
+            map(transform).flatten()
+        }
+    }
 }
