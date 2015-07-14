@@ -91,3 +91,34 @@ class FlattenHandler<A>(
         currentListener?.unlisten()
     }
 }
+
+class FlatMapHandler<A, B>(
+        private val out: StreamWithSend<B>,
+        private val transform: (Event<A>) -> Stream<B>?,
+        private var currentListener: Listener? = null) : (Transaction, Event<A>) -> Unit {
+
+    override fun invoke(tx: Transaction, event: Event<A>) {
+        val bs = try {
+            transform(event)
+        } catch (e: Exception) {
+            out.send(tx, Error<B>(e))
+            null
+        }
+
+        tx.last {
+            currentListener?.unlisten()
+
+            val listener = (bs as? StreamImpl<B>)?.listen(tx, out.node, DirectToOutHandler(out))
+            currentListener = listener
+
+            val debugCollector = debugCollector
+            if (debugCollector != null && listener != null) {
+                debugCollector.visitPrimitive(listener)
+            }
+        }
+    }
+
+    protected fun finalize() {
+        currentListener?.unlisten()
+    }
+}

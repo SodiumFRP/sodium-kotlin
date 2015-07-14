@@ -86,5 +86,5 @@ public interface Stream<out A> {
 
     fun defer(executor: Executor): Stream<A>
 
-    fun <B> flatMap(transform: (Event<A>) -> Stream<B>): Stream<B>
+    fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B>
 }

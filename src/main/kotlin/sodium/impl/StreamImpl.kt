@@ -262,7 +262,6 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun defer(executor: Executor): StreamImpl<A> {
         val out = StreamWithSend<A>()
-
         val listener = Transaction.apply2 {
             listen(it, out.node) { trans2, value ->
                 executor.execute {
@@ -272,13 +271,16 @@ public abstract class StreamImpl<A> : Stream<A> {
                 }
             }
         }
-
+        debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
     }
 
-    override fun <B> flatMap(transform: (Event<A>) -> Stream<B>): Stream<B> {
-        return Transaction.apply2 {
-            map(transform).flatten()
+    override fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B> {
+        val out = StreamWithSend<B>()
+        val listener = Transaction.apply2 {
+            listen(it, out.node, FlatMapHandler(out, transform))
         }
+        debugCollector?.visitPrimitive(listener)
+        return out.addCleanup(listener)
     }
 }
