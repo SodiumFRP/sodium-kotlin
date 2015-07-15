@@ -79,6 +79,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
             out.send(it, sampleNoTrans())
         }
         val l = stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
+        debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)
     }
 
@@ -87,28 +88,9 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
             val initial = Lazy.lift(transform, sampleLazy(it))
             val mappedStream = StreamWithSend<B>()
             val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, stream.firings, transform))
+            debugCollector?.visitPrimitive(l)
             mappedStream.addCleanup(l)
-            LazyCell<B>(mappedStream, true, initial)
-        }
-    }
-
-    override fun <B, S> collect(initState: S, f: (Event<A>, Event<S>) -> Pair<B, S>): Cell<B> {
-        return collect({ Value(initState) }, f)
-    }
-
-    override fun <B, S> collect(initState: () -> Event<S>, f: (Event<A>, Event<S>) -> Pair<B, S>): Cell<B> {
-        return Transaction.apply2 {
-            val zbs = Lazy.lift(f, sampleLazy(), initState)
-            val ebs = StreamLoop<Pair<B, S>>()
-            val bbs = ebs.holdLazy(zbs)
-            val bs = bbs.map {
-                it.value.second
-            }
-            val ebs_out = updates.snapshot(bs, f)
-            ebs.loop(ebs_out)
-            bbs.map {
-                it.value.first
-            }
+            LazyCell(mappedStream, true, initial)
         }
     }
 

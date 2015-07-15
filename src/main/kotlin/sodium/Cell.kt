@@ -27,19 +27,6 @@ public interface Cell<A> {
     fun <B> map(transform: (Event<A>) -> B): Cell<B>
 
     /**
-     * Transform a cell with a generalized state loop (a mealy machine). The function
-     * is passed the input and the old state and returns the new state and output value.
-     */
-    fun <B, S> collect(initState: S, f: (Event<A>, Event<S>) -> Pair<B, S>): Cell<B>
-
-    /**
-     * Transform a cell with a generalized state loop (a mealy machine). The function
-     * is passed the input and the old state and returns the new state and output value.
-     * Variant that takes a lazy initial state.
-     */
-    fun <B, S> collect(initState: () -> Event<S>, f: (Event<A>, Event<S>) -> Pair<B, S>): Cell<B>
-
-    /**
      * Listen for firings of this stream. The returned Listener has an unlisten()
      * method to cause the listener to be removed. This is the observer pattern.
      */

@@ -334,23 +334,6 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(6, sum_out.sample().value)
     }
 
-    public fun testCollect() {
-        val ea = Sodium.streamSink<Int>()
-        val out = ArrayList<Int>()
-        val sum = ea.hold(100).collect(0) { a, s ->
-            a.value + s.value to a.value + s.value
-        }
-        val l = sum.listen { out.add(it.value) }
-        System.gc()
-        ea.send(5)
-        ea.send(7)
-        ea.send(1)
-        ea.send(2)
-        ea.send(3)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList(100, 105, 112, 113, 115, 118), out)
-    }
-
     public fun testAccum() {
         val ea = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
