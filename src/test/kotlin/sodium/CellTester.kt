@@ -15,7 +15,7 @@ public class CellTester : TestCase() {
         val e = Sodium.streamSink<Int>()
         val b = e.hold(0)
         val out = ArrayList<Int>()
-        val l = Operational.updates(b).listen { out.add(it.value) }
+        val l = b.operational().updates().listen { out.add(it.value) }
         System.gc()
         e.send(2)
         e.send(9)
@@ -90,7 +90,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(b).map { it.value + 100 }.listen { out.add(it.value) }
+            b.operational().value().map { it.value + 100 }.listen { out.add(it.value) }
         }
         System.gc()
         b.send(2)
@@ -113,7 +113,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            doubleUp(Operational.value(b)).map { it.value + 100 }.listen { out.add(it.value) }
+            doubleUp(b.operational().value()).map { it.value + 100 }.listen { out.add(it.value) }
         }
         System.gc()
         b.send(2)
@@ -126,7 +126,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(b).coalesce { fst, snd ->
+            b.operational().value().coalesce { fst, snd ->
                 snd.value
             }.listen { out.add(it.value) }
         }
@@ -142,7 +142,7 @@ public class CellTester : TestCase() {
         val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
-            Operational.value(bi).snapshot(bc).listen { out.add(it.value) }
+            bi.operational().value().snapshot(bc).listen { out.add(it.value) }
         }
         System.gc()
         bc.send('b')
@@ -158,7 +158,7 @@ public class CellTester : TestCase() {
         val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
         val l = Transaction.apply {
-            doubleUp(Operational.value(bi)).snapshot(bc).listen { out.add(it.value) }
+            doubleUp(bi.operational().value()).snapshot(bc).listen { out.add(it.value) }
         }
         System.gc()
         bc.send('b')
@@ -174,7 +174,7 @@ public class CellTester : TestCase() {
         val bj = Sodium.cellSink(2)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(bi).merge(Operational.value(bj)) { x, y ->
+            bi.operational().value().merge(bj.operational().value()) { x, y ->
                 x.value + y.value
             }.listen { out.add(it.value) }
         }
@@ -189,7 +189,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(b).filter {
+            b.operational().value().filter {
                 true
             }.listen { out.add(it.value) }
         }
@@ -204,7 +204,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply2 {
-            doubleUp(Operational.value(b)).filter {
+            doubleUp(b.operational().value()).filter {
                 true
             }.listen { out.add(it.value) }
         }
@@ -219,7 +219,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            Operational.value(b).once().listen { out.add(it.value) }
+            b.operational().value().once().listen { out.add(it.value) }
         }
         System.gc()
         b.send(2)
@@ -232,7 +232,7 @@ public class CellTester : TestCase() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
-            doubleUp(Operational.value(b)).once().listen { out.add(it.value) }
+            doubleUp(b.operational().value()).once().listen { out.add(it.value) }
         }
         System.gc()
         b.send(2)
@@ -244,7 +244,7 @@ public class CellTester : TestCase() {
     public fun testValuesLateListen() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
-        val value = Operational.value(b)
+        val value = b.operational().value()
         System.gc()
         b.send(8)
         val l = value.listen { out.add(it.value) }
@@ -356,7 +356,7 @@ public class CellTester : TestCase() {
         val l = Transaction.apply {
             val a = Sodium.const("lettuce")
             val b = Sodium.cellLoop<String>()
-            val eSnap = Operational.value(a).snapshot(b) { a, b ->
+            val eSnap = a.operational().value().snapshot(b) { a, b ->
                 "${a.value} ${b.value}"
             }
             b.loop(Sodium.const("cheese"))
@@ -370,7 +370,7 @@ public class CellTester : TestCase() {
         val out = ArrayList<String>()
         val value = Transaction.apply {
             val a = Sodium.cellLoop<String>()
-            val value_ = Operational.value(a).hold("onion")
+            val value_ = a.operational().value().hold("onion")
             a.loop(Sodium.const("cheese"))
             value_
         }
@@ -409,7 +409,7 @@ public class CellTester : TestCase() {
     public fun testChanges() {
         val out = ArrayList<Int>()
         val cell = Sodium.cellSink(0)
-        val l = cell.changes().listen { out.add(it.value) }
+        val l = cell.operational().changes().listen { out.add(it.value) }
         System.gc()
         cell.send(0)
         cell.send(1)

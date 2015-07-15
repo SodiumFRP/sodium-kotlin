@@ -31,5 +31,13 @@ public interface Cell<A> {
      * method to cause the listener to be removed. This is the observer pattern.
      */
     fun listen(action: (Event<A>) -> Unit): Listener
+
+    /**
+     * This is an OPERATIONAL primitive, which is not part of the main Sodium
+     * API. It breaks the property of non-detectability of cell steps/updates.
+     * The rule with this primitive is that you should only use it in functions
+     * that do not allow the caller to detect the cell updates.
+     */
+    fun operational(): Operational<A>
 }
 

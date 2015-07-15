@@ -146,12 +146,3 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     }
     return out.addCleanup(listener)
 }
-
-public fun <A> Cell<A>.changes(): Stream<A> {
-    val thiz = this as CellImpl<A>
-    val out = StreamWithSend<A>()
-    val listener = Transaction.apply2 {
-        thiz.updates.listen(it, out.node, ChangesHandler<A>(out, thiz))
-    }
-    return out.addCleanup(listener)
-}
