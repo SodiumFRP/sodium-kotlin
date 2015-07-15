@@ -426,4 +426,38 @@ public class StreamTester : TestCase() {
         l.unlisten()
         TestCase.assertEquals(listOf("Bb", "Bc", "Ad", "Ae", "Af", "Bg"), out)
     }
+
+    public fun testFlatMap2() {
+        fun foo(i: Int): Stream<String> {
+            val sink = Sodium.streamSink<String>()
+            sink.send("A" + i)
+            return sink
+        }
+
+        val out = ArrayList<String>()
+        val sink = Sodium.streamSink<Int>()
+
+        val l = sink.flatMap {
+            foo(it.value)
+        }.listen { out.add(it.value) }
+
+//        val l = sink.map {
+//            foo(it.value)
+//        }.flatten().listen { out.add(it.value) }
+
+//        val l = sink.map {
+//            foo(it.value)
+//        }.hold(null).switchS().listen { out.add(it.value) }
+
+
+        sink.send(1)
+
+        Sodium.tx {
+            sink.send(2)
+            sink.send(3)
+        }
+
+        l.unlisten()
+        TestCase.assertEquals(listOf("A1", "A2", "A3"), out)
+    }
 }

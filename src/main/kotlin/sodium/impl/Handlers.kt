@@ -76,14 +76,16 @@ class FlattenHandler<A>(
         private var currentListener: Listener? = null) : (Transaction, Event<Stream<A>?>) -> Unit {
 
     override fun invoke(tx: Transaction, event: Event<Stream<A>?>) {
+        val newStream = try {
+            event.value
+        } catch (e: Exception) {
+            out.send(tx, Error<A>(e))
+            null
+        }
+
         tx.last {
             currentListener?.unlisten()
-
-            try {
-                currentListener = (event.value as? StreamImpl<A>)?.listen(tx, out.node, DirectToOutHandler(out))
-            } catch (e: Exception) {
-                out.send(tx, Error<A>(e))
-            }
+            currentListener = (newStream as? StreamImpl<A>)?.listen(tx, out.node, DirectToOutHandler(out))
         }
     }
 
@@ -98,7 +100,7 @@ class FlatMapHandler<A, B>(
         private var currentListener: Listener? = null) : (Transaction, Event<A>) -> Unit {
 
     override fun invoke(tx: Transaction, event: Event<A>) {
-        val bs = try {
+        val newStream = try {
             transform(event)
         } catch (e: Exception) {
             out.send(tx, Error<B>(e))
@@ -108,7 +110,7 @@ class FlatMapHandler<A, B>(
         tx.last {
             currentListener?.unlisten()
 
-            val listener = (bs as? StreamImpl<B>)?.listen(tx, out.node, DirectToOutHandler(out))
+            val listener = (newStream as? StreamImpl<B>)?.listen(tx, out.node, DirectToOutHandler(out))
             currentListener = listener
 
             val debugCollector = debugCollector

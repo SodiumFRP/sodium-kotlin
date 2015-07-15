@@ -3,7 +3,6 @@ package sodium.impl
 import sodium.*
 import sodium.Error
 import sodium.Stream
-import java.util.ArrayList
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
@@ -36,7 +35,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         }
 
         if (!firings.isEmpty()) {
-            val firings = ArrayList(firings)
+            val firings = firings.toTypedArray()
             trans.prioritized(target) {
                 // Anything sent already in this transaction must be sent now so that
                 // there's no order dependency between send and listen.
