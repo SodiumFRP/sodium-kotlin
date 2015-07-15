@@ -392,6 +392,7 @@ public class CellTester : TestCase() {
         val out = ArrayList<Char>()
         val eo = bsw.switchS()
         val l = eo.listen { out.add(it.value) }
+        System.gc()
         ese.send(SE('A', 'a', null))
         ese.send(SE('B', 'b', null))
         ese.send(SE('C', 'c', eb))
@@ -403,5 +404,30 @@ public class CellTester : TestCase() {
         ese.send(SE('I', 'i', ea))
         l.unlisten()
         TestCase.assertEquals(Arrays.asList('A', 'B', 'C', 'd', 'e', 'F', 'G', 'h', 'I'), out)
+    }
+
+    public fun testChanges() {
+        val out = ArrayList<Int>()
+        val cell = Sodium.cellSink(0)
+        val l = cell.changes().listen { out.add(it.value) }
+        System.gc()
+        cell.send(0)
+        cell.send(1)
+        cell.send(2)
+
+        Sodium.tx {
+            cell.send(2)
+            cell.send(3)
+        }
+
+        cell.send(4)
+
+        Sodium.tx {
+            cell.send(5)
+            cell.send(4)
+        }
+
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(1, 2, 3, 4), out)
     }
 }

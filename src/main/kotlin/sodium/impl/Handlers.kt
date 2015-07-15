@@ -124,3 +124,20 @@ class FlatMapHandler<A, B>(
         currentListener?.unlisten()
     }
 }
+
+class ChangesHandler<A>(
+        private val out: StreamWithSend<A>,
+        private val thiz: CellImpl<A>) : (Transaction, Event<A>) -> Unit{
+    var old: Event<A>? = null
+
+    override fun invoke(tx: Transaction, event: Event<A>) {
+        if (old == null) {
+            old = thiz.sampleNoTrans()
+        }
+
+        if (old != event) {
+            old = event
+            out.send(tx, event)
+        }
+    }
+}
