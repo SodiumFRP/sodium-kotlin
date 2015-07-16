@@ -10,26 +10,20 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
 
     init {
         val (listener, updates) = Transaction.apply2 {
-            if (lo) {
-                stream.listen(it, Node.NULL) { trans, newValue ->
-                    if (valueUpdate == null) {
-                        trans.last {
-                            setupValue()
-                        }
-                    }
-                    valueUpdate = newValue
-                } to stream
+            val lfo = if (lo) {
+                stream
             } else {
-                val lastOnlyStream = stream.lastFiringOnly(it)
-                lastOnlyStream.listen(it, Node.NULL) { trans, newValue ->
-                    if (valueUpdate == null) {
-                        trans.last {
-                            setupValue()
-                        }
-                    }
-                    valueUpdate = newValue
-                } to lastOnlyStream
+                stream.lastFiringOnly(it)
             }
+
+            lfo.listen(it, Node.NULL) { trans, newValue ->
+                if (valueUpdate == null) {
+                    trans.last {
+                        setupValue()
+                    }
+                }
+                valueUpdate = newValue
+            } to lfo
         }
 
         this.listener = listener

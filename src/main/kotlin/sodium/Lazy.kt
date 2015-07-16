@@ -5,13 +5,9 @@ public object Lazy {
      * Like map from Lazy<A> to Lazy<B>
      */
     public inline fun <A, B> lift(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: Event<A>.() -> B,
-                                  inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> Event<A>): () -> Event<B> {
+                                  inlineOptions(InlineOption.ONLY_LOCAL_RETURN) a: () -> Event<A>): () -> B {
         return {
-            try {
-                Value(a().f())
-            } catch (e: Exception) {
-                Error(e)
-            }
+            a().f()
         }
     }
 

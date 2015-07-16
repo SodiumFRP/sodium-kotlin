@@ -10,7 +10,7 @@ public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), true, null) {
             val cell = a_out as CellImpl<A>
             val stream = stream as StreamLoop<A>
             stream.loop(cell.updates)
-            lazyValue = cell.sampleLazy(it)
+            lazyValue = { cell.sampleLazy(it)().value }
         }
     }
 

@@ -174,13 +174,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun <B, S> collectLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
         val eb = StreamWithSend<B>()
         val es = StreamWithSend<S>()
-        val state = LazyCell(es, false) {
-            try {
-                Value(initState())
-            } catch (e: Exception) {
-                Error(e)
-            }
-        }
+        val state = LazyCell(es, false, initState)
 
         return Transaction.apply2 {
             val listener1 = listen(it, eb.node) { trans2, a ->
