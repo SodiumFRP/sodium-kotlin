@@ -431,7 +431,7 @@ public class StreamTester : TestCase() {
         fun foo(i: Int): Stream<String> {
             val sink = Sodium.streamSink<String>()
             sink.send("A" + i)
-            return sink
+            return sink.defer()
         }
 
         val out = ArrayList<String>()
@@ -459,5 +459,36 @@ public class StreamTester : TestCase() {
 
         l.unlisten()
         TestCase.assertEquals(listOf("A1", "A2", "A3"), out)
+    }
+
+    public fun testSwitchAndDefer() {
+        val out = ArrayList<String>()
+        val si = Sodium.streamSink<Int>()
+        val l = si.map {
+            Sodium.const("A" + it.value).operational().value().defer()
+        }.hold(Sodium.never()).switchS().listen { out.add(it.value) }
+        si.send(2);
+        si.send(4);
+        l.unlisten();
+        TestCase.assertEquals(listOf("A2", "A4"), out);
+    }
+
+    public fun testDefer2() {
+        val out = ArrayList<String>()
+        val sink = Sodium.streamSink<Int>()
+        val l2 = arrayOfNulls<Listener>(1)
+        val l = Sodium.tx {
+            sink.map {
+                const("A").operational().value().defer()
+            }.listen {
+                l2[0] = it.value.listen {
+                    out.add(it.value)
+                }
+            }
+        }
+        sink.send(1)
+        l2[0]?.unlisten()
+        l.unlisten();
+        TestCase.assertEquals(listOf("A"), out);
     }
 }

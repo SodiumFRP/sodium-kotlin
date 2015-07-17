@@ -54,6 +54,18 @@ public abstract class StreamImpl<A> : Stream<A> {
         return ListenerImplementation(this, action, nodeTarget)
     }
 
+    fun listenNoFire(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
+        val nodeTarget = synchronized (Transaction.listenersLock) {
+            if (target.ensureBiggerThan(node.rank)) {
+                trans.toRegen = true
+            }
+
+            node.link(target, action)
+        }
+
+        return ListenerImplementation(this, action, nodeTarget)
+    }
+
     override fun <B> map(transform: (Event<A>) -> B): StreamImpl<B> {
         val out = StreamWithSend<B>()
         val l = Transaction.apply2 {
