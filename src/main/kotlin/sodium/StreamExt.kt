@@ -115,10 +115,10 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
 /**
  * Unwrap a stream inside a cell to give a time-varying stream implementation.
  */
-public fun <A> Cell<out Stream<A>?>.switchS(): Stream<A> {
+public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
     val out = StreamWithSend<A>()
     val listener = Transaction.apply2 {
-        val bea = this as CellImpl<out Stream<A>?>
+        val bea = this as CellImpl<Stream<A>?>
 
         val l1 = try {
             (bea.sampleNoTrans().value as? StreamImpl<A>)?.listen(it, out.node, DirectToOutHandler(out))

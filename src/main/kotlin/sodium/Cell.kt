@@ -1,6 +1,6 @@
 package sodium
 
-public interface Cell<A> {
+public interface Cell<out A> {
     /**
      * Sample the cell's current value.
      *
