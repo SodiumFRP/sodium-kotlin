@@ -190,9 +190,8 @@ public class Transaction {
 
         @suppress("NOTHING_TO_INLINE")
         public inline fun end() {
-            val transaction = currentTransaction
+            currentTransaction?.close()
             currentTransaction = null
-            transaction?.close()
         }
 
         public inline fun <A> apply2(code: (Transaction) -> A): A = synchronized (transactionLock) {
