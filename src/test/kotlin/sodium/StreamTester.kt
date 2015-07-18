@@ -428,27 +428,12 @@ public class StreamTester : TestCase() {
     }
 
     public fun testFlatMap2() {
-        fun foo(i: Int): Stream<String> {
-            val sink = Sodium.streamSink<String>()
-            sink.send("A" + i)
-            return sink.defer()
-        }
-
         val out = ArrayList<String>()
         val sink = Sodium.streamSink<Int>()
 
         val l = sink.flatMap {
-            foo(it.value)
+            Sodium.just("A" + it.value).defer()
         }.listen { out.add(it.value) }
-
-//        val l = sink.map {
-//            foo(it.value)
-//        }.flatten().listen { out.add(it.value) }
-
-//        val l = sink.map {
-//            foo(it.value)
-//        }.hold(null).switchS().listen { out.add(it.value) }
-
 
         sink.send(1)
 
@@ -458,7 +443,7 @@ public class StreamTester : TestCase() {
         }
 
         l.unlisten()
-        TestCase.assertEquals(listOf("A1", "A2", "A3"), out)
+        TestCase.assertEquals(listOf("A1", "A3"), out)
     }
 
     public fun testSwitchAndDefer() {
