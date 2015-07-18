@@ -17,6 +17,14 @@ public object Sodium {
 
     public fun <A> cellSinkLazy(value: () -> A): LazyCellSink<A> = LazyCellSink(value)
 
+    public fun <A> just(value: A): Stream<A> {
+        val sink = StreamWithSend<A>()
+        Transaction.apply2 {
+            sink.send(it, Value<A>(value))
+        }
+        return sink
+    }
+
     /**
      * An event that never fires.
      */
