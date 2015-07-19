@@ -13,7 +13,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
         val listener = Transaction.apply2 {
-            listen(it, Node.NULL) { trans2, value ->
+            listen(it, Node<A>(Long.MAX_VALUE)) { trans2, value ->
                 try {
                     action(value)
                 } catch (e: Exception) {

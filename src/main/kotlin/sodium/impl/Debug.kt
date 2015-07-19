@@ -12,29 +12,12 @@ private abstract data class Direction<A, B>(val from: A, val to: B) {
 
 private fun collectDirections(out: MutableSet<Direction<*, *>>, node: Node<*>) {
     node.listeners.forEach {
-        out.add(object : Direction<Node<*>, Node.Target<*>>(node, it) {
+        out.add(object : Direction<Node<*>, Node<*>>(node, it) {
             override fun format(sb: Appendable) {
-                sb.direction(formatNode(from), formatTarget(to))
+                sb.direction(formatNode(from), formatNode(to))
             }
         })
-        out.add(object : Direction<Node.Target<*>, Node<*>>(it, it.node) {
-            override fun format(sb: Appendable) {
-                sb.direction(formatTarget(from), formatNode(to))
-            }
-        })
-        val action = it.action.get()
-        if (action != null) {
-            out.add(object : Direction<Node.Target<*>, Any>(it, action) {
-                override fun format(sb: Appendable) {
-                    sb.append('\n')
-                    sb.single(formatTarget(from))
-                    sb.append(" -> ")
-                    sb.formatAction(to)
-                }
-            })
-        }
-
-        collectDirections(out, it.node)
+        collectDirections(out, it)
     }
 }
 
@@ -52,7 +35,14 @@ private fun Appendable.declareNodeStyle(vararg nodes: Node<*>) {
     allNodes.forEach {
         append('\n')
         single(formatNode(it))
-        append(""" [label="${labelNode(it)}"];""")
+        append(""" [label="${labelNode(it)}""")
+
+        val action = it.action?.get()
+        if (action != null) {
+            append("\\n")
+            formatAction(action)
+        }
+        append(""""];""")
     }
 }
 
@@ -60,7 +50,7 @@ private fun getAllNodes(out: HashSet<Node<*>>, node: Node<*>) {
     out.add(node)
 
     node.listeners.forEach {
-        getAllNodes(out, it.node)
+        getAllNodes(out, it)
     }
 }
 
@@ -107,15 +97,13 @@ private fun labelNode(node: Node<*>): String {
 }
 
 private fun formatNode(node: Node<*>) = "Node:" +  Integer.toString(System.identityHashCode(node), 16).toUpperCase()
-private fun formatTarget(node: Node.Target<*>) = "Target:" + Integer.toString(System.identityHashCode(node), 16).toUpperCase()
 
 private fun Appendable.formatAction(action: Any) {
     val info = debugCollector?.info?.get(action)
-    val baseName = "action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase()
     if (info == null) {
-        single(baseName)
+        single("action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase())
     } else {
-        append("""{"$baseName" [label="${info.opName} - ${info.fileAndLine}"]}""")
+        append("""${info.opName} - ${info.fileAndLine}""")
     }
 }
 

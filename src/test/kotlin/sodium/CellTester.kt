@@ -291,7 +291,7 @@ public class CellTester : TestCase() {
     public fun testTransaction() {
         val calledBack = BooleanArray(1)
         Transaction.apply {
-            it.prioritized(Node.NULL) {
+            it.prioritized(Node<Unit>(Long.MAX_VALUE)) {
                 calledBack[0] = true
             }
         }

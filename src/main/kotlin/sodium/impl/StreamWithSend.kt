@@ -25,16 +25,13 @@ public open class StreamWithSend<A> : StreamImpl<A>() {
         }
 
         for (target in listeners) {
-            trans.prioritized(target.node) {
+            trans.prioritized(target) {
                 Transaction.inCallback++
                 try {
                     // Don't allow transactions to interfere with Sodium
                     // internals.
                     // Dereference the weak reference
-                    val action = target.action.get()
-                    if (action != null) {
-                        action(it, a)
-                    }
+                    target.action?.get()?.invoke(it, a)
                 } finally {
                     Transaction.inCallback--
                 }

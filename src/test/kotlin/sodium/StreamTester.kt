@@ -84,7 +84,6 @@ public class StreamTester : TestCase() {
             out.add(it.value)
         }
         System.gc()
-        //dump(e)
         e.send(5)
         l.unlisten()
         TestCase.assertEquals(listOf("5"), out)

@@ -5,17 +5,18 @@ import java.lang.ref.WeakReference
 import java.util.HashSet
 
 public class Node<A>(var rank: Long) : Comparable<Node<*>> {
-    val listeners = HashSet<Target<A>>()
+    val listeners = HashSet<Node<*>>()
+    var action: WeakReference<((Transaction, Event<*>) -> Unit)?>? = null
 
     @suppress("NOTHING_TO_INLINE")
-    inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Target<A> {
-        val target = Target(action, node)
-        listeners.add(target)
-        return target
+    inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Node<*> {
+        node.action = WeakReference(action as ((Transaction, Event<*>) -> Unit)?)
+        listeners.add(node)
+        return node
     }
 
     @suppress("NOTHING_TO_INLINE")
-    inline fun unlink(target: Target<out A>) {
+    inline fun unlink(target: Node<*>) {
         listeners.remove(target)
     }
 
@@ -29,7 +30,7 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
         rank = limit + 1
 
         for (listener in listeners) {
-            listener.node.ensureBiggerThan(rank)
+            listener.ensureBiggerThan(rank)
         }
 
         return true
@@ -41,13 +42,5 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
             rank > other.rank -> 1
             else -> 0
         }
-    }
-
-    companion object {
-        public val NULL: Node<Any> = Node(Long.MAX_VALUE)
-    }
-
-    public class Target<A>(action: ((Transaction, Event<A>) -> Unit)?, val node: Node<*>) {
-        val action = WeakReference(action)
     }
 }

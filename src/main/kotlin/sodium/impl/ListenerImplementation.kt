@@ -11,7 +11,7 @@ class ListenerImplementation<A>(
          * a weak reference.
          */
         var action: Any?,
-        private var target: Node.Target<A>?) : ListenerImpl() {
+        private var target: Node<*>?) : ListenerImpl() {
 
     override fun unlisten() {
         synchronized (Transaction.listenersLock) {

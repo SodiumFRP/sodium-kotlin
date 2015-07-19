@@ -16,7 +16,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
                 stream.lastFiringOnly(it)
             }
 
-            lfo.listen(it, Node.NULL) { trans, newValue ->
+            lfo.listen(it, Node<A>(Long.MAX_VALUE)) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
                         setupValue()
