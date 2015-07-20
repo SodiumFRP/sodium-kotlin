@@ -140,3 +140,25 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     }
     return out.addCleanup(listener)
 }
+
+/**
+ * Filter out any event occurrences whose value is a Java null pointer.
+ */
+@suppress("UNCHECKED_CAST")
+public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
+    val out = StreamWithSend<A>()
+    val thiz = this as StreamImpl<A?>
+    val l = Transaction.apply2 {
+        thiz.listen(it, out.node) { trans2, a ->
+            try {
+                if (a.value != null) {
+                    out.send(trans2, a as Event<A>)
+                }
+            } catch (e: Exception) {
+                Sodium.unhandledExceptions.send(trans2, Value(e))
+            }
+        }
+    }
+    debugCollector?.visitPrimitive(l)
+    return out.addCleanup(l)
+}

@@ -26,11 +26,6 @@ public interface Stream<out A> {
     fun filter(predicate: (Event<A>) -> Boolean): Stream<A>
 
     /**
-     * Filter out any event occurrences whose value is a Java null pointer.
-     */
-    fun filterNotNull(): Stream<A>
-
-    /**
      * Let event occurrences through only when the behavior's value is True.
      * Note that the behavior's value is as it was at the start of the transaction,
      * that is, no state changes from the current transaction are taken into account.

@@ -156,12 +156,6 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.addCleanup(l)
     }
 
-    override fun filterNotNull(): StreamImpl<A> {
-        return filter {
-            it.value != null
-        }
-    }
-
     override fun gate(predicate: Cell<Boolean>): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val listener = Transaction.apply2 {
