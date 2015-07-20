@@ -361,12 +361,18 @@ public class StreamTester : TestCase() {
     }
 
     public fun testFlatten() {
-        val out = ArrayList<Int>()
+        val out = ArrayList<String>()
         val sink = Sodium.streamSink<Int>()
         val s1 = sink.map { it.value * 10 }
         val s2 = sink.map { it.value * 100 }
         val ss = Sodium.streamSink<Stream<Int>>()
-        val l = ss.flatten().listen { out.add(it.value) }
+        val l = ss.flatten().listen {
+            try {
+                out.add(it.value.toString())
+            } catch (e: Exception) {
+                out.add(e.getMessage())
+            }
+        }
 
         System.gc()
 
@@ -377,8 +383,11 @@ public class StreamTester : TestCase() {
         sink.send(3)
 
         Sodium.tx {
+            sink.send(8)
+            sink.sendError(RuntimeException("e1"))
             ss.send(s2)
             sink.send(4)
+            sink.sendError(RuntimeException("e2"))
         }
 
         sink.send(5)
@@ -387,7 +396,7 @@ public class StreamTester : TestCase() {
         sink.send(7)
 
         l.unlisten()
-        TestCase.assertEquals(listOf(20, 30, 40, 500, 600, 70), out)
+        TestCase.assertEquals(listOf("20", "30", "80", "e1", "40", "e2", "500", "600", "70"), out)
     }
 
     public fun testFlatMap() {

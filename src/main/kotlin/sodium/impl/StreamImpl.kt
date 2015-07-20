@@ -283,7 +283,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B> {
         val out = StreamWithSend<B>()
         val listener = Transaction.apply2 {
-            listen(it, out.node, FlatMapHandler(out, transform))
+            listen(it, Node<B>(out.node.rank), FlatMapHandler(out, transform))
         }
         debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)

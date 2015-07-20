@@ -127,7 +127,7 @@ public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
             null
         }
 
-        bea.updates.listen(it, out.node, FlattenHandler(out, l1))
+        bea.updates.listen(it, Node<A>(out.node.rank), FlattenHandler(out, l1))
     }
     return out.addCleanup(listener)
 }
@@ -136,7 +136,7 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<Stream<A>?>
     val listener = Transaction.apply2 {
-        thiz.listen(it, out.node, FlattenHandler(out))
+        thiz.listen(it, Node<A>(out.node.rank), FlattenHandler(out))
     }
     return out.addCleanup(listener)
 }

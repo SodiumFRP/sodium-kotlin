@@ -101,7 +101,7 @@ private fun formatNode(node: Node<*>) = "Node:" +  Integer.toString(System.ident
 private fun Appendable.formatAction(action: Any) {
     val info = debugCollector?.info?.get(action)
     if (info == null) {
-        single("action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase())
+        append("action:" + Integer.toString(System.identityHashCode(action), 16).toUpperCase())
     } else {
         append("""${info.opName} - ${info.fileAndLine}""")
     }

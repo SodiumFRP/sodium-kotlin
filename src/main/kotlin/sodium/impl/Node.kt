@@ -9,7 +9,7 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     var action: WeakReference<((Transaction, Event<*>) -> Unit)?>? = null
 
     @suppress("NOTHING_TO_INLINE")
-    inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Node<*> {
+    fun link(node: Node<*>, action: ((Transaction, Event<A>) -> Unit)?): Node<*> {
         node.action = WeakReference(action as ((Transaction, Event<*>) -> Unit)?)
         listeners.add(node)
         return node

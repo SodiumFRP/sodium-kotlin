@@ -85,7 +85,14 @@ class FlattenHandler<A>(
 
         tx.last {
             currentListener?.unlisten()
-            currentListener = (newStream as? StreamImpl<A>)?.listenNoFire(tx, out.node, DirectToOutHandler(out))
+
+            val listener = (newStream as? StreamImpl<A>)?.listenNoFire(tx, out.node, DirectToOutHandler(out))
+            currentListener = listener
+
+            val debugCollector = debugCollector
+            if (debugCollector != null && listener != null) {
+                debugCollector.visitPrimitive(listener)
+            }
         }
     }
 
