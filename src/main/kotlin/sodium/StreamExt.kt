@@ -147,7 +147,7 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
 @suppress("UNCHECKED_CAST")
 public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
     val out = StreamWithSend<A>()
-    val thiz = this as StreamImpl<A?>
+    val thiz = this as StreamImpl<*>
     val l = Transaction.apply2 {
         thiz.listen(it, out.node) { trans2, a ->
             try {
@@ -161,4 +161,16 @@ public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
     }
     debugCollector?.visitPrimitive(l)
     return out.addCleanup(l)
+}
+
+public fun <A> Stream<A>.direct(sink: StreamSink<A>) {
+    val thiz = this as StreamImpl<*>
+    val out = sink as StreamWithSend<*>
+    val listener = Transaction.apply2 {
+        thiz.listen(it, out.node) { trans, value ->
+            out.send(trans, value)
+        }
+    }
+    debugCollector?.visitPrimitive(listener)
+    out.addCleanup(listener)
 }

@@ -476,4 +476,23 @@ public class StreamTester : TestCase() {
         l.unlisten();
         TestCase.assertEquals(listOf("A"), out);
     }
+
+    public fun testDirectStream() {
+        val ea = Sodium.streamSink<Int>()
+        val ec = Sodium.tx {
+            val eb = streamSink<Int>()
+            val ec = ea.map { it.value % 10 }.merge(eb) { x, y -> x.value + y.value }
+            val eb_out = ea.map { it.value / 10 }.filter { it.value != 0 }
+            eb_out.direct(eb)
+            ec
+        }
+        val out = ArrayList<Int>()
+        val l = ec.listen { out.add(it.value) }
+        System.gc()
+        ea.send(2)
+        ea.send(52)
+        l.unlisten()
+        TestCase.assertEquals(listOf(2, 7), out)
+    }
+
 }
