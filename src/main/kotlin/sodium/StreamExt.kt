@@ -144,7 +144,7 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
 /**
  * Filter out any event occurrences whose value is a Java null pointer.
  */
-@suppress("UNCHECKED_CAST")
+@suppress("UNCHECKED_CAST", "BASE_WITH_NULLABLE_UPPER_BOUND")
 public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<A?>

@@ -13,7 +13,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
             throw AssertionError("StreamLoop/CellLoop must be used within an explicit transaction")
     }
 
-    public fun loop(ea_out: Stream<A>) {
+    public fun loop(ea_out: Stream<A>): Stream<A> {
         if (assigned)
             throw AssertionError("StreamLoop looped more than once")
         assigned = true
@@ -24,6 +24,8 @@ public class StreamLoop<A> : StreamWithSend<A>() {
         }
         debugCollector?.visitPrimitive(listener)
         addCleanup(listener)
+
+        return ea_out
     }
 }
 
