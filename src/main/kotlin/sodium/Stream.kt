@@ -9,6 +9,8 @@ public interface Stream<out A> {
      */
     fun listen(action: (Event<A>) -> Unit): Listener
 
+    fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener
+
     /**
      * Transform the event's value according to the supplied function.
      */

@@ -11,6 +11,22 @@ public abstract class StreamImpl<A> : Stream<A> {
     private val finalizers = AtomicReference<ListenerImpl>()
     abstract val firings: List<Event<A>>
 
+    override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
+        val listener = Transaction.apply2 {
+            listen(it, Node.NULL) { trans2, value ->
+                executor.execute {
+                    try {
+                        action(value)
+                    } catch (e: Exception) {
+                        Sodium.unhandledExceptions.send(trans2, Value(e))
+                    }
+                }
+            }
+        }
+        debugCollector?.visitPrimitive(listener)
+        return listener
+    }
+
     override fun listen(action: (Event<A>) -> Unit): Listener {
         val listener = Transaction.apply2 {
             listen(it, Node.NULL) { trans2, value ->

@@ -1,5 +1,7 @@
 package sodium
 
+import java.util.concurrent.Executor
+
 public interface Cell<out A> {
     /**
      * Sample the cell's current value.
@@ -31,6 +33,8 @@ public interface Cell<out A> {
      * method to cause the listener to be removed. This is the observer pattern.
      */
     fun listen(action: (Event<A>) -> Unit): Listener
+
+    fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener
 
     /**
      * This is an OPERATIONAL primitive, which is not part of the main Sodium

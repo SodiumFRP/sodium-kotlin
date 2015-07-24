@@ -2,6 +2,7 @@ package sodium.impl
 
 import sodium.*
 import sodium.Stream
+import java.util.concurrent.Executor
 
 public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, lo: Boolean = false) : Cell<A>, Operational<A> {
     private val listener: Listener
@@ -121,7 +122,13 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
         }
     }
 
-//    companion object {
+    override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
+        return Transaction.apply2 {
+            value(it).listen(executor, action)
+        }
+    }
+
+    //    companion object {
 //
 //        /**
 //         * Lift a binary function into cells.
