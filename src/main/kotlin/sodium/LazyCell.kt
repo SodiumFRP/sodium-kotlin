@@ -3,7 +3,7 @@ package sodium
 import sodium.impl.CellImpl
 import sodium.impl.StreamImpl
 
-public open class LazyCell<A>(stream: StreamImpl<A>, lo: Boolean, var lazyValue: (() -> A)?) : CellImpl<A>(null, stream, lo) {
+public open class LazyCell<A>(stream: StreamImpl<A>, var lazyValue: (() -> A)?) : CellImpl<A>(null, stream) {
 
     override fun sampleNoTrans(): Event<A> {
         val value = value

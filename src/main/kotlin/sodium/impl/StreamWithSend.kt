@@ -3,19 +3,20 @@ package sodium.impl
 import sodium.Error
 import sodium.Event
 import sodium.Value
-import java.util.ArrayList
 
 public open class StreamWithSend<A> : StreamImpl<A>() {
-    override val firings = ArrayList<Event<A>>()
+    override var firings: Event<A>? = null
 
     fun send(trans: Transaction, a: Event<A>) {
-        if (firings.isEmpty()) {
-            trans.last {
-                firings.clear()
-            }
-        }
+        if (firings == null) {
+            firings = a
 
-        firings.add(a)
+            trans.last {
+                firings = null
+            }
+        } else {
+            throw IllegalStateException("send() called more than once per transaction.")
+        }
 
         val listeners = synchronized (Transaction.listenersLock) {
             if (node.listeners.isEmpty())

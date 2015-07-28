@@ -1,7 +1,6 @@
 package sodium
 
 import junit.framework.TestCase
-import sodium.impl.StreamImpl
 import sodium.impl.Transaction
 import java.util.ArrayList
 import java.util.concurrent.Executors
@@ -132,16 +131,32 @@ public class StreamTester : TestCase() {
     }
 
     public fun testMergeSimultaneous() {
-        val e = Sodium.streamSink<Int>()
+        val s1 = Sodium.streamSink<Int>()
+        val s2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
-        val l = e.merge(e).listen {
+        val l = s1.merge(s2).listen {
             out.add(it.value)
         }
         System.gc()
-        e.send(7)
-        e.send(9)
+        Sodium.tx {
+            s1.send(7)
+            s2.send(60)
+        }
+        s1.send(9)
+        Sodium.tx {
+            s1.send(60)
+            s2.send(90)
+        }
+        Sodium.tx {
+            s2.send(90)
+            s1.send(60)
+        }
+        Sodium.tx {
+            s2.send(90)
+            s1.send(60)
+        }
         l.unlisten()
-        TestCase.assertEquals(listOf(7, 7, 9, 9), out)
+        TestCase.assertEquals(listOf(60, 9, 90, 90, 90), out)
     }
 
     public fun testMergeLeftBias() {
@@ -169,22 +184,6 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(
                 "left1a", "left1b", "right1a", "right1b",
                 "left2a", "left2b", "right2a", "right2b"), out)
-    }
-
-    public fun testCoalesce() {
-        val e1 = Sodium.streamSink<Int>()
-        val e2 = Sodium.streamSink<Int>()
-        val out = ArrayList<Int>()
-        val l = e1
-                .merge(e1.map { it.value * 100 }.merge(e2))
-                .coalesce { a, b -> a.value + b.value }
-                .listen { out.add(it.value) }
-        System.gc()
-        e1.send(2)
-        e1.send(8)
-        e2.send(40)
-        l.unlisten()
-        TestCase.assertEquals(listOf(202, 808, 40), out)
     }
 
     public fun testFilter() {
@@ -340,27 +339,6 @@ public class StreamTester : TestCase() {
         l.unlisten()
     }
 
-    public fun testLast() {
-        val out = ArrayList<Int>()
-        val sink = Sodium.streamSink<Int>()
-        val lastOnly = Transaction.apply2 {
-            (sink as StreamImpl<Int>).lastFiringOnly(it)
-        }
-        val l = lastOnly.listen {
-            out.add(it.value)
-        }
-
-        System.gc()
-        Sodium.tx {
-            sink.send(3)
-            sink.send(5)
-            sink.send(7)
-        }
-
-        l.unlisten()
-        TestCase.assertEquals(listOf(7), out)
-    }
-
     public fun testFlatten() {
         val out = ArrayList<Int>()
         val sink = Sodium.streamSink<Int>()
@@ -438,7 +416,6 @@ public class StreamTester : TestCase() {
         sink.send(1)
 
         Sodium.tx {
-            sink.send(2)
             sink.send(3)
         }
 

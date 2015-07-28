@@ -1,54 +1,12 @@
 package sodium.impl
 
-import sodium.*
 import sodium.Error
+import sodium.Event
+import sodium.Listener
 import sodium.Stream
-
-class CoalesceHandler<A>(
-        private val transformation: (Event<A>, Event<A>) -> A,
-        private val out: StreamWithSend<A>) : (Transaction, Event<A>) -> Unit {
-    private var accumulator: Event<A>? = null
-
-    override fun invoke(transaction: Transaction, a: Event<A>) {
-        val acc = accumulator
-        if (acc != null) {
-            try {
-                accumulator = Value(transformation(acc, a))
-            } catch (e: Exception) {
-                accumulator = Error(e)
-            }
-        } else {
-            transaction.prioritized(out.node) {
-                val acc1 = accumulator
-                if (acc1 != null) {
-                    out.send(it, acc1)
-                    accumulator = null
-                }
-            }
-            accumulator = a
-        }
-    }
-}
-
-class LastOnlyHandler<A>(
-        private val out: StreamWithSend<A>,
-        private val firings: List<Event<A>>) : (Transaction, Event<A>) -> Unit {
-    private var notSent = true
-
-    override fun invoke(tx: Transaction, event: Event<A>) {
-        if (notSent) {
-            notSent = false
-            tx.prioritized(out.node) {
-                notSent = true
-                out.send(it, firings.last())
-            }
-        }
-    }
-}
 
 class CellMapHandler<A, B>(
         private val out: StreamWithSend<B>,
-        private val firings: List<Event<A>>,
         private val transform: (Event<A>) -> B) : (Transaction, Event<A>) -> Unit {
     private var notSent = true
 
@@ -58,7 +16,7 @@ class CellMapHandler<A, B>(
             tx.prioritized(out.node) {
                 notSent = true
                 out.send(it) {
-                    transform(firings.last())
+                    transform(event)
                 }
             }
         }
@@ -138,6 +96,36 @@ class ChangesHandler<A>(
         if (old != event) {
             old = event
             out.send(tx, event)
+        }
+    }
+}
+
+class MergeHandler<A>(val out: StreamWithSend<A>, val combine: (Event<A>, Event<A>) -> A) : (Transaction, Event<A>) -> Unit {
+    private var a: Event<A>? = null
+    private var b: Event<A>? = null
+
+    override fun invoke(tx: Transaction, event: Event<A>) {
+        if (a == null) {
+            a = event
+
+            tx.prioritized(out.node) {
+                val a = a
+                val b = b
+                this.a = null
+                this.b = null
+
+                if (a != null) {
+                    if (b != null) {
+                        out.send(it) {
+                            combine(a, b)
+                        }
+                    } else {
+                        out.send(it, a)
+                    }
+                }
+            }
+        } else {
+            b = event
         }
     }
 }

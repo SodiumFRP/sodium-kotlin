@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference
 public abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
     private val finalizers = AtomicReference<ListenerImpl>()
-    abstract val firings: List<Event<A>>
+    abstract var firings: Event<A>?
 
     override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
         val listener = Transaction.apply2 {
@@ -50,20 +50,18 @@ public abstract class StreamImpl<A> : Stream<A> {
             node.link(target, action)
         }
 
-        if (!firings.isEmpty()) {
-            val firings = firings.toTypedArray()
+        val event = firings
+        if (event != null) {
             trans.prioritized(target) {
                 // Anything sent already in this transaction must be sent now so that
                 // there's no order dependency between send and listen.
-                for (a in firings) {
-                    Transaction.inCallback++
-                    try {
-                        // Don't allow transactions to interfere with Sodium
-                        // internals.
-                        action(it, a)
-                    } finally {
-                        Transaction.inCallback--
-                    }
+                Transaction.inCallback++
+                try {
+                    // Don't allow transactions to interfere with Sodium
+                    // internals.
+                    action(it, event)
+                } finally {
+                    Transaction.inCallback--
                 }
             }
         }
@@ -137,24 +135,6 @@ public abstract class StreamImpl<A> : Stream<A> {
         return out.addCleanup(listener)
     }
 
-    fun coalesce(transaction: Transaction, combine: (Event<A>, Event<A>) -> A): StreamImpl<A> {
-        val out = StreamWithSend<A>()
-        val handler = CoalesceHandler(combine, out)
-        val listener = listen(transaction, out.node, handler)
-        debugCollector?.visitPrimitive(listener)
-        return out.addCleanup(listener)
-    }
-
-    /**
-     * Clean up the output by discarding any firing other than the last one.
-     */
-    fun lastFiringOnly(trans: Transaction): StreamImpl<A> {
-        val out = StreamWithSend<A>()
-        val listener = listen(trans, out.node, LastOnlyHandler(out, firings))
-        debugCollector?.visitPrimitive(listener)
-        return out.addCleanup(listener)
-    }
-
     override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
         val out = StreamWithSend<A>()
         val l = Transaction.apply2 {
@@ -196,7 +176,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun <B, S> collectLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> Pair<B, S>): StreamImpl<B> {
         val eb = StreamWithSend<B>()
         val es = StreamWithSend<S>()
-        val state = LazyCell(es, false, initState)
+        val state = LazyCell(es, initState)
 
         return Transaction.apply2 {
             val listener1 = listen(it, eb.node) { trans2, a ->

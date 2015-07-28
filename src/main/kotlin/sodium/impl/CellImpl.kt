@@ -4,31 +4,21 @@ import sodium.*
 import sodium.Stream
 import java.util.concurrent.Executor
 
-public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, lo: Boolean = false) : Cell<A>, Operational<A> {
+public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A>, Operational<A> {
     private val listener: Listener
-    val updates: StreamImpl<A>
     private var valueUpdate: Event<A>? = null
 
     init {
-        val (listener, updates) = Transaction.apply2 {
-            val lfo = if (lo) {
-                stream
-            } else {
-                stream.lastFiringOnly(it)
-            }
-
-            lfo.listen(it, Node.NULL) { trans, newValue ->
+        listener = Transaction.apply2 {
+            stream.listen(it, Node.NULL) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
                         setupValue()
                     }
                 }
                 valueUpdate = newValue
-            } to lfo
+            }
         }
-
-        this.listener = listener
-        this.updates = updates
 
         debugCollector?.visitPrimitive(listener)
     }
@@ -73,7 +63,9 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
         trans1.prioritized(out.node) {
             out.send(it, sampleNoTrans())
         }
-        val l = stream.listen(trans1, out.node, LastOnlyHandler(out, stream.firings))
+        val l = stream.listen(trans1, out.node) { trans2, event ->
+            out.send(trans2, event)
+        }
         debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)
     }
@@ -83,7 +75,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
     }
 
     override fun updates(): Stream<A> {
-        return updates
+        return stream
     }
 
     override fun value(): Stream<A> {
@@ -95,7 +87,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
     override fun changes(): Stream<A> {
         val out = StreamWithSend<A>()
         val l = Transaction.apply2 {
-            updates.listen(it, out.node, ChangesHandler(out, this))
+            stream.listen(it, out.node, ChangesHandler(out, this))
         }
         debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)
@@ -105,10 +97,10 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>, l
         return Transaction.apply2 {
             val initial = Lazy.lift(transform, sampleLazy(it))
             val mappedStream = StreamWithSend<B>()
-            val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, stream.firings, transform))
+            val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, transform))
             debugCollector?.visitPrimitive(l)
             mappedStream.addCleanup(l)
-            LazyCell(mappedStream, true, initial)
+            LazyCell(mappedStream, initial)
         }
     }
 

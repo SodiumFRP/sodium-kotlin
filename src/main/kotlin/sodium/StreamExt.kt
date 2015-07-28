@@ -3,22 +3,6 @@ package sodium
 import sodium.impl.*
 
 /**
- * If there's more than one firing in a single transaction, combine them into
- * one using the specified combining function.
- *
- * If the event firings are ordered, then the first will appear at the left
- * input of the combining function. In most common cases it's best not to
- * make any assumptions about the ordering, and the combining function would
- * ideally be commutative.
- */
-public fun <A> Stream<A>.coalesce(transform: (Event<A>, Event<A>) -> A): Stream<A> {
-    val thiz = this as StreamImpl<A>
-    return Transaction.apply2 {
-        thiz.coalesce(it, transform)
-    }
-}
-
-/**
  * Merge two streams of events of the same type.
  *
  * In the case where two event occurrences are simultaneous (i.e. both
@@ -28,6 +12,20 @@ public fun <A> Stream<A>.coalesce(transform: (Event<A>, Event<A>) -> A): Stream<
  * be undefined.
  */
 public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
+    return merge(other) { a: Event<A>, b: Event<A> ->
+        b.value
+    }
+}
+
+/**
+ * Merge two streams of events of the same type, combining simultaneous
+ * event occurrences.
+ *
+ * In the case where multiple event occurrences are simultaneous (i.e. all
+ * within the same transaction), they are combined using the same logic as
+ * 'coalesce'.
+ */
+public fun <A> Stream<A>.merge(other: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
     val ea = this as StreamImpl<A>
     val eb = other as StreamImpl<A>
     val out = StreamWithSend<A>()
@@ -37,9 +35,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
     // поэтому тут нет блокировок и ensureBiggerThan
     right.rank = 1
     val node_target = left.link(right, null)
-    val handler = { trans: Transaction, value: Event<A> ->
-        out.send(trans, value)
-    }
+    val handler = MergeHandler(out, combine)
     Transaction.apply2 {
         val l1 = ea.listen(it, left, handler)
         val l2 = eb.listen(it, right, handler)
@@ -55,18 +51,6 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
 }
 
 /**
- * Merge two streams of events of the same type, combining simultaneous
- * event occurrences.
- *
- * In the case where multiple event occurrences are simultaneous (i.e. all
- * within the same transaction), they are combined using the same logic as
- * 'coalesce'.
- */
-public fun <A> Stream<A>.merge(stream: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
-    return merge(stream).coalesce(combine)
-}
-
-/**
  * Create a behavior with the specified initial value, that gets updated
  * by the values coming through the event. The 'current value' of the behavior
  * is notionally the value as it was 'at the start of the transaction'.
@@ -78,7 +62,7 @@ public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
 }
 
 public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
-    return LazyCell(this as StreamImpl<A>, false, initValue)
+    return LazyCell(this as StreamImpl<A>, initValue)
 }
 
 /**
@@ -127,7 +111,7 @@ public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
             null
         }
 
-        bea.updates.listen(it, out.node, FlattenHandler(out, l1))
+        bea.stream.listen(it, out.node, FlattenHandler(out, l1))
     }
     return out.addCleanup(listener)
 }

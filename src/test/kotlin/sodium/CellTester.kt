@@ -99,44 +99,6 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList(109, 102, 107), out)
     }
 
-    /**
-     * This is used for tests where value() produces a single initial value on listen,
-     * and then we double that up by causing that single initial event to be repeated.
-     * This needs testing separately, because the code must be done carefully to achieve
-     * this.
-     */
-    private fun doubleUp(ev: Stream<Int>): Stream<Int> {
-        return ev.merge(ev)
-    }
-
-    public fun testValuesTwiceThenMap() {
-        val b = Sodium.cellSink(9)
-        val out = ArrayList<Int>()
-        val l = Transaction.apply {
-            doubleUp(b.operational().value()).map { it.value + 100 }.listen { out.add(it.value) }
-        }
-        System.gc()
-        b.send(2)
-        b.send(7)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList(109, 109, 102, 102, 107, 107), out)
-    }
-
-    public fun testValuesThenCoalesce() {
-        val b = Sodium.cellSink(9)
-        val out = ArrayList<Int>()
-        val l = Transaction.apply {
-            b.operational().value().coalesce { fst, snd ->
-                snd.value
-            }.listen { out.add(it.value) }
-        }
-        System.gc()
-        b.send(2)
-        b.send(7)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList(9, 2, 7), out)
-    }
-
     public fun testValuesThenSnapshot() {
         val bi = Sodium.cellSink(9)
         val bc = Sodium.cellSink('a')
@@ -151,22 +113,6 @@ public class CellTester : TestCase() {
         bi.send(7)
         l.unlisten()
         TestCase.assertEquals(Arrays.asList('a', 'b', 'c'), out)
-    }
-
-    public fun testValuesTwiceThenSnapshot() {
-        val bi = Sodium.cellSink(9)
-        val bc = Sodium.cellSink('a')
-        val out = ArrayList<Char>()
-        val l = Transaction.apply {
-            doubleUp(bi.operational().value()).snapshot(bc).listen { out.add(it.value) }
-        }
-        System.gc()
-        bc.send('b')
-        bi.send(2)
-        bc.send('c')
-        bi.send(7)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList('a', 'a', 'b', 'b', 'c', 'c'), out)
     }
 
     public fun testValuesThenMerge() {
@@ -200,39 +146,11 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList(9, 2, 7), out)
     }
 
-    public fun testValuesTwiceThenFilter() {
-        val b = Sodium.cellSink(9)
-        val out = ArrayList<Int>()
-        val l = Transaction.apply2 {
-            doubleUp(b.operational().value()).filter {
-                true
-            }.listen { out.add(it.value) }
-        }
-        System.gc()
-        b.send(2)
-        b.send(7)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList(9, 9, 2, 2, 7, 7), out)
-    }
-
     public fun testValuesThenOnce() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
         val l = Transaction.apply {
             b.operational().value().once().listen { out.add(it.value) }
-        }
-        System.gc()
-        b.send(2)
-        b.send(7)
-        l.unlisten()
-        TestCase.assertEquals(Arrays.asList(9), out)
-    }
-
-    public fun testValuesTwiceThenOnce() {
-        val b = Sodium.cellSink(9)
-        val out = ArrayList<Int>()
-        val l = Transaction.apply {
-            doubleUp(b.operational().value()).once().listen { out.add(it.value) }
         }
         System.gc()
         b.send(2)
@@ -264,7 +182,6 @@ public class CellTester : TestCase() {
         //dump(b)
         b.send(8)
         Sodium.tx {
-            b.send(7)
             b.send(9)
         }
         l.unlisten()

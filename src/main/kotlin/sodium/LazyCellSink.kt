@@ -3,7 +3,7 @@ package sodium
 import sodium.impl.StreamWithSend
 import sodium.impl.Transaction
 
-public class LazyCellSink<A>(initValue: () -> A) : LazyCell<A>(StreamWithSend(), false, initValue), Sink<A> {
+public class LazyCellSink<A>(initValue: () -> A) : LazyCell<A>(StreamWithSend(), initValue), Sink<A> {
     override fun send(a: A) {
         Transaction.apply2 {
             if (Transaction.inCallback > 0)
