@@ -331,18 +331,9 @@ public class CellTester : TestCase() {
         cell.send(0)
         cell.send(1)
         cell.send(2)
-
-        Sodium.tx {
-            cell.send(2)
-            cell.send(3)
-        }
-
+        cell.send(3)
         cell.send(4)
-
-        Sodium.tx {
-            cell.send(5)
-            cell.send(4)
-        }
+        cell.send(4)
 
         l.unlisten()
         TestCase.assertEquals(Arrays.asList(1, 2, 3, 4), out)

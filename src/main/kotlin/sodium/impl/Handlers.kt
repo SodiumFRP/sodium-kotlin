@@ -1,8 +1,7 @@
 package sodium.impl
 
+import sodium.*
 import sodium.Error
-import sodium.Event
-import sodium.Listener
 import sodium.Stream
 
 class CellMapHandler<A, B>(
@@ -101,31 +100,26 @@ class ChangesHandler<A>(
 }
 
 class MergeHandler<A>(val out: StreamWithSend<A>, val combine: (Event<A>, Event<A>) -> A) : (Transaction, Event<A>) -> Unit {
-    private var a: Event<A>? = null
-    private var b: Event<A>? = null
+    private var accumulator: Event<A>? = null
 
     override fun invoke(tx: Transaction, event: Event<A>) {
+        val a = accumulator
         if (a == null) {
-            a = event
+            accumulator = event
 
             tx.prioritized(out.node) {
-                val a = a
-                val b = b
-                this.a = null
-                this.b = null
-
-                if (a != null) {
-                    if (b != null) {
-                        out.send(it) {
-                            combine(a, b)
-                        }
-                    } else {
-                        out.send(it, a)
-                    }
+                val acc = accumulator
+                if (acc != null) {
+                    out.send(it, acc)
+                    accumulator = null
                 }
             }
         } else {
-            b = event
+            try {
+                accumulator = Value(combine(a, event))
+            } catch (e: Exception) {
+                accumulator = Error<A>(e)
+            }
         }
     }
 }

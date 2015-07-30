@@ -30,12 +30,13 @@ public fun <A> Stream<A>.merge(other: Stream<A>, combine: (Event<A>, Event<A>) -
     val eb = other as StreamImpl<A>
     val out = StreamWithSend<A>()
     val left = Node<A>(0)
-    val right = out.node
-    // Весь этот блок конструируется отдельно от остальных,
-    // поэтому тут нет блокировок и ensureBiggerThan
-    right.rank = 1
-    val node_target = left.link(right, null)
+    val right = Node<A>(1)
+    out.node.rank = 2
+    left.link(right, null)
+    val node_target1 = left.link(out.node, null)
+    val node_target2 = right.link(out.node, null)
     val handler = MergeHandler(out, combine)
+
     Transaction.apply2 {
         val l1 = ea.listen(it, left, handler)
         val l2 = eb.listen(it, right, handler)
@@ -45,7 +46,8 @@ public fun <A> Stream<A>.merge(other: Stream<A>, combine: (Event<A>, Event<A>) -
 
     return out.addCleanup(object : ListenerImpl() {
         override fun unlisten() {
-            left.unlink(node_target)
+            left.unlink(node_target1)
+            right.unlink(node_target2)
         }
     })
 }

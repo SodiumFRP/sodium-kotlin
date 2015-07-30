@@ -24,14 +24,6 @@ public class StreamTester : TestCase() {
 
         out.clear()
         System.gc()
-        Sodium.tx {
-            e.send(3)
-            e.send(4)
-        }
-        TestCase.assertEquals(listOf(3, 4), out)
-
-        out.clear()
-        System.gc()
         e.send(5)
         l.unlisten()
         e.send(6)
@@ -64,13 +56,12 @@ public class StreamTester : TestCase() {
         Sodium.tx {
             System.gc()
             e.send(5)
-            e.send(7)
             val l = e.listen {
                 out.add(it.value)
             }
             l.unlisten()
         }
-        TestCase.assertEquals(listOf(5, 7), out)
+        TestCase.assertEquals(listOf(5), out)
     }
 
     public fun testMap() {
@@ -157,33 +148,6 @@ public class StreamTester : TestCase() {
         }
         l.unlisten()
         TestCase.assertEquals(listOf(60, 9, 90, 90, 90), out)
-    }
-
-    public fun testMergeLeftBias() {
-        val e1 = Sodium.streamSink<String>()
-        val e2 = Sodium.streamSink<String>()
-        val out = ArrayList<String>()
-        val l = e1.merge(e2).listen {
-            out.add(it.value)
-        }
-        System.gc()
-        Transaction.apply2 {
-            e1.send("left1a")
-            e1.send("left1b")
-            e2.send("right1a")
-            e2.send("right1b")
-        }
-        Transaction.apply2 {
-            e2.send("right2a")
-            e2.send("right2b")
-            e1.send("left2a")
-            e1.send("left2b")
-        }
-        //dump(e1, e2)
-        l.unlisten()
-        TestCase.assertEquals(listOf(
-                "left1a", "left1b", "right1a", "right1b",
-                "left2a", "left2b", "right2a", "right2b"), out)
     }
 
     public fun testFilter() {
