@@ -11,7 +11,7 @@ public class Transaction {
     private val prioritizedQ = PriorityQueue<Entry>()
     private val entries = HashSet<Entry>()
     private val lastQ = ArrayList<() -> Unit>()
-    private val postQ = ArrayList<() -> Unit>()
+    private var postQ: ArrayList<() -> Unit>? = null
 
     public fun prioritized(node: Node<*>, action: (Transaction) -> Unit) {
         val e = Entry(node, action)
@@ -30,7 +30,16 @@ public class Transaction {
      * Add an action to run after all last() actions.
      */
     public fun post(action: () -> Unit) {
-        postQ.add(action)
+        val pq = postQ
+        val list = if (pq == null) {
+            val list = ArrayList<() -> Unit>()
+            postQ = list
+            list
+        } else {
+            pq
+        }
+
+        list.add(action)
     }
 
     /**
@@ -61,11 +70,16 @@ public class Transaction {
             action()
         }
         lastQ.clear()
+    }
 
-        for (action in postQ) {
-            action()
+    public fun onPostTx() {
+        val pq = postQ
+        if (pq != null) {
+            postQ = null
+            for (action in pq) {
+                action()
+            }
         }
-        postQ.clear()
     }
 
 	private class Entry(val node: Node<*>, val action: (Transaction) -> Unit) : Comparable<Entry> {
@@ -123,47 +137,6 @@ public class Transaction {
             }
         }
 
-
-        /**
-         * Run the specified code inside a single transaction, with the contained
-         * code returning a value of the parameter type A.
-
-         * In most cases this is not needed, because all APIs will create their own
-         * transaction automatically. It is useful where you want to run multiple
-         * reactive operations atomically.
-         */
-        public fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
-            // If we are already inside a transaction (which must be on the same
-            // thread otherwise we wouldn't have acquired transactionLock), then
-            // keep using that same transaction.
-
-            val transWas = currentTransaction
-            if (transWas != null) {
-                code(transWas)
-            } else {
-                if (!runningOnStartHooks) {
-                    runningOnStartHooks = true
-                    try {
-                        for (r in onStartHooks) {
-                            r.run()
-                        }
-                    } finally {
-                        runningOnStartHooks = false
-                    }
-                }
-
-                val transaction = Transaction()
-                currentTransaction = transaction
-
-                try {
-                    code(transaction)
-                } finally {
-                    transaction.close()
-                    currentTransaction = null
-                }
-            }
-        }
-
         public fun needClose(): Boolean = currentTransaction == null
 
         public fun begin(): Transaction {
@@ -188,13 +161,24 @@ public class Transaction {
             }
         }
 
-        @suppress("NOTHING_TO_INLINE")
-        public inline fun end() {
-            currentTransaction?.close()
-            currentTransaction = null
+        public fun end() {
+            val tx = currentTransaction
+            if (tx != null) {
+                tx.close()
+                currentTransaction = null
+                tx.onPostTx()
+            }
         }
 
-        public inline fun <A> apply2(code: (Transaction) -> A): A = synchronized (transactionLock) {
+        /**
+         * Run the specified code inside a single transaction, with the contained
+         * code returning a value of the parameter type A.
+         *
+         * In most cases this is not needed, because all APIs will create their own
+         * transaction automatically. It is useful where you want to run multiple
+         * reactive operations atomically.
+         */
+        public inline fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
             val needClose = needClose()
             val transaction = begin()
             try {

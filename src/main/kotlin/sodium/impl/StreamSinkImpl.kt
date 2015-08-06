@@ -7,7 +7,7 @@ import sodium.Value
 
 public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
     override fun send(a: A) {
-        Transaction.apply2 {
+        Transaction.apply {
             if (Transaction.inCallback > 0)
                 throw AssertionError("You are not allowed to use send() inside a Sodium callback")
             send(it, Value(a))
@@ -15,7 +15,7 @@ public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
     }
 
     override fun send(a: Event<A>) {
-        Transaction.apply2 {
+        Transaction.apply {
             if (Transaction.inCallback > 0)
                 throw AssertionError("You are not allowed to use send() inside a Sodium callback")
             send(it, a)
@@ -23,7 +23,7 @@ public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
     }
 
     override fun sendError(a: Exception) {
-        Transaction.apply2 {
+        Transaction.apply {
             if (Transaction.inCallback > 0)
                 throw AssertionError("You are not allowed to use send() inside a Sodium callback")
             send(it, Error(a))

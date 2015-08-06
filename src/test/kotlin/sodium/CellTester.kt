@@ -89,7 +89,7 @@ public class CellTester : TestCase() {
     public fun testValueThenMap() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             b.operational().value().map { it.value + 100 }.listen { out.add(it.value) }
         }
         System.gc()
@@ -103,7 +103,7 @@ public class CellTester : TestCase() {
         val bi = Sodium.cellSink(9)
         val bc = Sodium.cellSink('a')
         val out = ArrayList<Char>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             bi.operational().value().snapshot(bc).listen { out.add(it.value) }
         }
         System.gc()
@@ -119,7 +119,7 @@ public class CellTester : TestCase() {
         val bi = Sodium.cellSink(9)
         val bj = Sodium.cellSink(2)
         val out = ArrayList<Int>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             bi.operational().value().merge(bj.operational().value()) { x, y ->
                 x.value + y.value
             }.listen { out.add(it.value) }
@@ -134,7 +134,7 @@ public class CellTester : TestCase() {
     public fun testValuesThenFilter() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             b.operational().value().filter {
                 true
             }.listen { out.add(it.value) }
@@ -149,7 +149,7 @@ public class CellTester : TestCase() {
     public fun testValuesThenOnce() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             b.operational().value().once().listen { out.add(it.value) }
         }
         System.gc()
@@ -232,7 +232,7 @@ public class CellTester : TestCase() {
 
     public fun testLoopBehavior() {
         val ea = Sodium.streamSink<Int>()
-        val sum_out = Transaction.apply {
+        val sum_out = Sodium.tx {
             val sum = CellLoop<Int>()
             val sum_out_ = ea.snapshot(sum) { x, y ->
                 x.value + y.value
@@ -270,7 +270,7 @@ public class CellTester : TestCase() {
 
     public fun testLoopValueSnapshot() {
         val out = ArrayList<String>()
-        val l = Transaction.apply {
+        val l = Sodium.tx {
             val a = Sodium.const("lettuce")
             val b = Sodium.cellLoop<String>()
             val eSnap = a.operational().value().snapshot(b) { a, b ->
@@ -285,7 +285,7 @@ public class CellTester : TestCase() {
 
     public fun testLoopValueHold() {
         val out = ArrayList<String>()
-        val value = Transaction.apply {
+        val value = Sodium.tx {
             val a = Sodium.cellLoop<String>()
             val value_ = a.operational().value().hold("onion")
             a.loop(Sodium.const("cheese"))

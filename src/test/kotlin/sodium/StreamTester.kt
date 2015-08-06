@@ -189,7 +189,7 @@ public class StreamTester : TestCase() {
 
     public fun testLoopStream() {
         val ea = Sodium.streamSink<Int>()
-        val ec = Transaction.apply2 {
+        val ec = Transaction.apply {
             val eb = StreamLoop<Int>()
             val ec = ea.map { it.value % 10 }.merge(eb) { x, y -> x.value + y.value }
             val eb_out = ea.map { it.value / 10 }.filter { it.value != 0 }
@@ -268,10 +268,12 @@ public class StreamTester : TestCase() {
     }
 
     public fun testDefer() {
-        val e = Sodium.streamSink<Char>()
-        val b = e.hold(' ')
         val out = ArrayList<Char>()
-        val l = e.defer().snapshot(b).listen { out.add(it.value) }
+        val e = Sodium.streamSink<Char>()
+        val l = Sodium.tx {
+            val b = e.hold(' ')
+            e.defer().snapshot(b).listen { out.add(it.value) }
+        }
         System.gc()
         e.send('C')
         e.send('B')

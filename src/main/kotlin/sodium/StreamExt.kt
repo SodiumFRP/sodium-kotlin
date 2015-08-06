@@ -37,7 +37,7 @@ public fun <A> Stream<A>.merge(other: Stream<A>, combine: (Event<A>, Event<A>) -
     val node_target2 = right.link(out.node, null)
     val handler = MergeHandler(out, combine)
 
-    Transaction.apply2 {
+    Transaction.apply {
         val l1 = ea.listen(it, left, handler)
         val l2 = eb.listen(it, right, handler)
         debugCollector?.visitPrimitive(l1)
@@ -75,7 +75,7 @@ public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
 public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<C>
-    val listener = Transaction.apply2 {
+    val listener = Transaction.apply {
         thiz.listen(it, out.node) { trans, events ->
             trans.post {
                 val safeEvents = try {
@@ -103,7 +103,7 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
  */
 public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
     val out = StreamWithSend<A>()
-    val listener = Transaction.apply2 {
+    val listener = Transaction.apply {
         val bea = this as CellImpl<Stream<A>?>
 
         val l1 = try {
@@ -121,7 +121,7 @@ public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
 public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<Stream<A>?>
-    val listener = Transaction.apply2 {
+    val listener = Transaction.apply {
         thiz.listen(it, out.node, FlattenHandler(out))
     }
     return out.addCleanup(listener)
@@ -134,14 +134,14 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
 public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<A?>
-    val l = Transaction.apply2 {
+    val l = Transaction.apply {
         thiz.listen(it, out.node) { trans2, a ->
             try {
                 if (a.value != null) {
                     out.send(trans2, a as Event<A>)
                 }
             } catch (e: Exception) {
-                Sodium.unhandledExceptions.send(trans2, Value(e))
+                Sodium.unhandledExceptions?.invoke(e)
             }
         }
     }

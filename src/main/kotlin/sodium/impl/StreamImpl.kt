@@ -12,13 +12,13 @@ public abstract class StreamImpl<A> : Stream<A> {
     abstract var firings: Event<A>?
 
     override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, Node.NULL) { trans2, value ->
                 executor.execute {
                     try {
                         action(value)
                     } catch (e: Exception) {
-                        Sodium.unhandledExceptions.send(trans2, Value(e))
+                        Sodium.unhandledExceptions?.invoke(e)
                     }
                 }
             }
@@ -28,12 +28,14 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, Node.NULL) { trans2, value ->
-                try {
-                    action(value)
-                } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(trans2, Value(e))
+                trans2.post {
+                    try {
+                        action(value)
+                    } catch (e: Exception) {
+                        Sodium.unhandledExceptions?.invoke(e)
+                    }
                 }
             }
         }
@@ -82,7 +84,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun <B> map(transform: (Event<A>) -> B): StreamImpl<B> {
         val out = StreamWithSend<B>()
-        val l = Transaction.apply2 {
+        val l = Transaction.apply {
             listen(it, out.node) { trans2, value ->
                 out.send(trans2) {
                     transform(value)
@@ -95,7 +97,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun <B> snapshot(cell: Cell<B>): StreamImpl<B> {
         val out = StreamWithSend<B>()
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, out.node) { trans2, a ->
                 out.send(trans2, (cell as CellImpl<B>).sampleNoTrans())
             }
@@ -106,7 +108,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun <B, C> snapshot(cell: Cell<B>, transform: (Event<A>, Event<B>) -> C): StreamImpl<C> {
         val out = StreamWithSend<C>()
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, out.node) { trans2, a ->
                 out.send(trans2) {
                     transform(a, (cell as CellImpl<B>).sampleNoTrans())
@@ -118,18 +120,9 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun defer(): StreamImpl<A> {
-        val out = StreamWithSend<A>()
-        val listener = Transaction.apply2 {
-            listen(it, out.node) { trans, a ->
-                trans.post {
-                    val newTrans = Transaction()
-                    try {
-                        out.send(newTrans, a)
-                    } finally {
-                        newTrans.close()
-                    }
-                }
-            }
+        val out = StreamSinkImpl<A>()
+        val listener = listen {
+            out.send(it)
         }
         debugCollector?.visitPrimitive(listener)
         return out.addCleanup(listener)
@@ -137,14 +130,14 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun filter(predicate: (Event<A>) -> Boolean): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        val l = Transaction.apply2 {
+        val l = Transaction.apply {
             listen(it, out.node) { trans2, a ->
                 try {
                     if (predicate(a)) {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(trans2, Value(e))
+                    Sodium.unhandledExceptions?.invoke(e)
                 }
             }
         }
@@ -154,14 +147,14 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun gate(predicate: Cell<Boolean>): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, out.node) { trans2, a ->
                 try {
                     if ((predicate as CellImpl<Boolean>).sampleNoTrans().value) {
                         out.send(trans2, a)
                     }
                 } catch (e: Exception) {
-                    Sodium.unhandledExceptions.send(trans2, Value(e))
+                    Sodium.unhandledExceptions?.invoke(e)
                 }
             }
         }
@@ -178,7 +171,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         val es = StreamWithSend<S>()
         val state = LazyCell(es, initState)
 
-        return Transaction.apply2 {
+        return Transaction.apply {
             val listener1 = listen(it, eb.node) { trans2, a ->
 
             }
@@ -214,7 +207,7 @@ public abstract class StreamImpl<A> : Stream<A> {
     }
 
     override fun <S> accumLazy(initState: () -> S, transform: (Event<A>, Event<S>) -> S): Cell<S> {
-        return Transaction.apply2 {
+        return Transaction.apply {
             val es = StreamLoop<S>()
             val s = es.holdLazy(initState)
             val es_out = snapshot(s, transform)
@@ -228,7 +221,7 @@ public abstract class StreamImpl<A> : Stream<A> {
         // the listener.
         val la = arrayOfNulls<Listener>(1)
         val out = StreamWithSend<A>()
-        la[0] = Transaction.apply2 {
+        la[0] = Transaction.apply {
             listen(it, out.node) { trans, a ->
                 val listener = la[0]
                 if (listener != null) {
@@ -257,10 +250,10 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun defer(executor: Executor): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, out.node) { trans2, value ->
                 executor.execute {
-                    Transaction.apply2 {
+                    Transaction.apply {
                         out.send(it, value)
                     }
                 }
@@ -272,7 +265,7 @@ public abstract class StreamImpl<A> : Stream<A> {
 
     override fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B> {
         val out = StreamWithSend<B>()
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             listen(it, out.node, FlatMapHandler(out, transform))
         }
         debugCollector?.visitPrimitive(listener)

@@ -17,7 +17,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
         if (assigned)
             throw AssertionError("StreamLoop looped more than once")
         assigned = true
-        val listener = Transaction.apply2 {
+        val listener = Transaction.apply {
             (ea_out as StreamImpl<A>).listen(it, node) { trans, value ->
                 send(trans, value)
             }

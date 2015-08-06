@@ -9,7 +9,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
     private var valueUpdate: Event<A>? = null
 
     init {
-        listener = Transaction.apply2 {
+        listener = Transaction.apply {
             stream.listen(it, Node.NULL) { trans, newValue ->
                 if (valueUpdate == null) {
                     trans.last {
@@ -32,13 +32,13 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
     }
 
     override fun sample(): Event<A> {
-        return Transaction.apply2 {
+        return Transaction.apply {
             sampleNoTrans()
         }
     }
 
     override fun sampleLazy(): () -> Event<A> {
-        return Transaction.apply2 {
+        return Transaction.apply {
             sampleLazy(it)
         }
     }
@@ -79,14 +79,14 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
     }
 
     override fun value(): Stream<A> {
-        return Transaction.apply2 {
+        return Transaction.apply {
             value(it)
         }
     }
 
     override fun changes(): Stream<A> {
         val out = StreamWithSend<A>()
-        val l = Transaction.apply2 {
+        val l = Transaction.apply {
             stream.listen(it, out.node, ChangesHandler(out, this))
         }
         debugCollector?.visitPrimitive(l)
@@ -94,7 +94,7 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
     }
 
     override fun <B> map(transform: (Event<A>) -> B): Cell<B> {
-        return Transaction.apply2 {
+        return Transaction.apply {
             val initial = Lazy.lift(transform, sampleLazy(it))
             val mappedStream = StreamWithSend<B>()
             val l = stream.listen(it, mappedStream.node, CellMapHandler(mappedStream, transform))
@@ -109,13 +109,13 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
     }
 
     override fun listen(action: (Event<A>) -> Unit): Listener {
-        return Transaction.apply2 {
+        return Transaction.apply {
             value(it).listen(action)
         }
     }
 
     override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
-        return Transaction.apply2 {
+        return Transaction.apply {
             value(it).listen(executor, action)
         }
     }

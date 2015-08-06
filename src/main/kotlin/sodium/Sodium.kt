@@ -19,7 +19,7 @@ public object Sodium {
 
     public fun <A> just(value: A): Stream<A> {
         val sink = StreamWithSend<A>()
-        Transaction.apply2 {
+        Transaction.apply {
             sink.send(it, Value<A>(value))
         }
         return sink
@@ -31,7 +31,7 @@ public object Sodium {
     public fun <A> never(): Stream<A> = NeverStreamImpl<A>()
 
     public fun <R> tx(body: Sodium.() -> R): R {
-        return Transaction.apply2 {
+        return Transaction.apply {
             body()
         }
     }
@@ -40,5 +40,5 @@ public object Sodium {
         debugCollector = DebugCollector()
     }
 
-    public val unhandledExceptions: StreamSinkImpl<Exception> = StreamSinkImpl()
+    public val unhandledExceptions: ((Exception) -> Unit)? = null
 }
