@@ -5,13 +5,13 @@ import java.util.HashSet
 import java.util.PriorityQueue
 
 public class Transaction {
-
-    // True if we need to re-generate the priority queue.
-    var toRegen: Boolean = false
     private val prioritizedQ = PriorityQueue<Entry>()
     private val entries = HashSet<Entry>()
     private val lastQ = ArrayList<() -> Unit>()
     private var postQ: ArrayList<() -> Unit>? = null
+    private var began: Boolean = false
+    // True if we need to re-generate the priority queue.
+    var toRegen: Boolean = false
 
     public fun prioritized(node: Node<*>, action: (Transaction) -> Unit) {
         val e = Entry(node, action)
@@ -110,7 +110,7 @@ public class Transaction {
         // Fine-grained lock that protects listeners and nodes.
         val listenersLock = Any()
 
-        public var currentTransaction: Transaction? = null
+        public var currentTransaction: Transaction = Transaction()
         var inCallback: Int = 0
         private val onStartHooks = ArrayList<Runnable>()
         private var runningOnStartHooks: Boolean = false
@@ -137,13 +137,13 @@ public class Transaction {
             }
         }
 
-        public fun needClose(): Boolean = currentTransaction == null
-
-        public fun begin(): Transaction {
+        public fun begin(): Boolean {
             val transWas = currentTransaction
-            return if (transWas != null) {
-                transWas
+            return if (transWas.began) {
+                false
             } else {
+                transWas.began = true
+
                 if (!runningOnStartHooks) {
                     runningOnStartHooks = true
                     try {
@@ -155,19 +155,14 @@ public class Transaction {
                     }
                 }
 
-                val transaction = Transaction()
-                currentTransaction = transaction
-                transaction
+                true
             }
         }
 
         public fun end() {
             val tx = currentTransaction
-            if (tx != null) {
-                tx.close()
-                currentTransaction = null
-                tx.onPostTx()
-            }
+            currentTransaction = Transaction()
+            tx.onPostTx()
         }
 
         /**
@@ -178,11 +173,14 @@ public class Transaction {
          * transaction automatically. It is useful where you want to run multiple
          * reactive operations atomically.
          */
-        public inline fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
-            val needClose = needClose()
-            val transaction = begin()
+        public fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
+            val needClose = begin()
             try {
-                code(transaction)
+                val result = code(currentTransaction)
+                if (needClose) {
+                    currentTransaction.close()
+                }
+                result
             } finally {
                 if (needClose) {
                     end()
