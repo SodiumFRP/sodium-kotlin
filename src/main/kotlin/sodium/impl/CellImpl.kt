@@ -290,32 +290,6 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
 //                })
 //            }
 //        }
-//
-//        /**
-//         * Unwrap a cell inside another cell to give a time-varying cell implementation.
-//         */
-//        public fun <A> switchC(bba: Cell<Cell<A>>): Cell<A> {
-//            return Transaction.apply2 {
-//                val za = bba.sampleLazy().map {
-//                    it.sample()
-//                }
-//                val out = StreamSink<A>()
-//                val listener = bba.value(it).listen_(out.node) { trans2, ba ->
-//                    // Note: If any switch takes place during a transaction, then the
-//                    // value().listen will always cause a sample to be fetched from the
-//                    // one we just switched to. The caller will be fetching our output
-//                    // using value().listen, and value() throws away all firings except
-//                    // for the last one. Therefore, anything from the old input behaviour
-//                    // that might have happened during this transaction will be suppressed.
-//                    // TODO: do something with memory leak here (if any).
-//                    ba.value(trans2).listen(out.node, trans2, false) { trans3, a ->
-//                        out.send(trans3, a)
-//                    }
-//                }
-//                out.addCleanup(listener).holdLazy(za)
-//            }
-//        }
-//    }
 
     private class LazySample<A>(var cell: CellImpl<A>?) {
         var value: Event<A>? = null

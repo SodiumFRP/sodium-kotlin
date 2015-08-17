@@ -313,6 +313,34 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList("cheese"), out)
     }
 
+    public fun testSwitchB() {
+        private class SB(var a: Char?, var b: Char?, var sw: Cell<Char>?)
+
+        val esb = Sodium.streamSink<SB>()
+        // Split each field out of SB so we can update multiple behaviours in a
+        // single transaction.
+        val ba = esb.map { it.value.a }.filterNotNull().hold('A')
+        val bb = esb.map { it.value.b }.filterNotNull().hold('a')
+        val bsw = esb.map { it.value.sw }.filterNotNull().hold(ba)
+        val bo = bsw.switchC()
+        val out = ArrayList<Char>()
+        val l = bo.listen {
+            out.add(it.value)
+        }
+        esb.send(SB('B', 'b', null))
+        esb.send(SB('C', 'c', bb))
+        esb.send(SB('D', 'd', null))
+        esb.send(SB('E', 'e', ba))
+        esb.send(SB('F', 'f', null))
+        esb.send(SB(null, null, bb))
+        esb.send(SB(null, null, ba))
+        esb.send(SB('G', 'g', bb))
+        esb.send(SB('H', 'h', ba))
+        esb.send(SB('I', 'i', ba))
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList('A', 'B', 'c', 'd', 'E', 'F', 'f', 'F', 'g', 'H', 'I'), out)
+    }
+
     public fun testSwitchE() {
         private class SE(val a: Char, val b: Char, val sw: Stream<Char>?)
 

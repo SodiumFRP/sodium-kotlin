@@ -1,5 +1,11 @@
 package sodium
 
+public inline fun <A, B> (() -> Event<A>).map(inlineOptions(InlineOption.ONLY_LOCAL_RETURN) f: (Event<A>) -> B): () -> B {
+    return {
+        f(this())
+    }
+}
+
 public object Lazy {
     /**
      * Like map from Lazy<A> to Lazy<B>

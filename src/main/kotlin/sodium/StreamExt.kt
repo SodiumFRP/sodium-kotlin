@@ -118,6 +118,32 @@ public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
     return out.addCleanup(listener)
 }
 
+/**
+ * Unwrap a cell inside another cell to give a time-varying cell implementation.
+ */
+public fun <A> Cell<Cell<A>>.switchC(): Cell<A> {
+    this as CellImpl<Cell<A>>
+
+    return Transaction.apply {
+        val za = sampleLazy().map {
+            it.value.sample().value
+        }
+        val out = StreamWithSend<A>()
+        val listener = value(it).listen(it, out.node) { trans2, ba ->
+            // Note: If any switch takes place during a transaction, then the
+            // value().listen will always cause a sample to be fetched from the
+            // one we just switched to. The caller will be fetching our output
+            // using value().listen, and value() throws away all firings except
+            // for the last one. Therefore, anything from the old input behaviour
+            // that might have happened during this transaction will be suppressed.
+            (ba.value as CellImpl<A>).value(trans2).listen(trans2, out.node) { trans3, a ->
+                out.send(trans3, a)
+            }
+        }
+        out.addCleanup(listener).holdLazy(za)
+    }
+}
+
 public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<Stream<A>?>
