@@ -134,7 +134,7 @@ public class CellTester : TestCase() {
         val bj = Sodium.cellSink(2)
         val out = ArrayList<Int>()
         val l = Sodium.tx {
-            bi.operational().value().merge(bj.operational().value()) { x, y ->
+            merge(bi.operational().value(), bj.operational().value()) { x, y ->
                 x.value + y.value
             }.listen { out.add(it.value) }
         }

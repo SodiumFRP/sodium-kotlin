@@ -152,7 +152,7 @@ public class StreamTester : TestCase() {
         val e1 = Sodium.streamSink<Int>()
         val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
-        val l = e1.merge(e2) { a, b ->
+        val l = merge(e1, e2) { a, b ->
             a.value * 10 + b.value
         }.listen {
             out.add(it.value)
@@ -215,7 +215,7 @@ public class StreamTester : TestCase() {
         val ea = Sodium.streamSink<Int>()
         val ec = Transaction.apply {
             val eb = StreamLoop<Int>()
-            val ec = ea.map { it.value % 10 }.merge(eb) { x, y -> x.value + y.value }
+            val ec = merge(ea.map { it.value % 10 }, eb) { x, y -> x.value + y.value }
             val eb_out = ea.map { it.value / 10 }.filter { it.value != 0 }
             eb.loop(eb_out)
             ec
