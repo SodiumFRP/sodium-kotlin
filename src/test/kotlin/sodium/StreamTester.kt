@@ -108,7 +108,7 @@ public class StreamTester : TestCase() {
         val e1 = Sodium.streamSink<Int>()
         val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
-        val l = e1.merge(e2).listen {
+        val l = e1.orElse(e2).listen {
             out.add(it.value)
         }
         System.gc()
@@ -123,7 +123,7 @@ public class StreamTester : TestCase() {
         val s1 = Sodium.streamSink<Int>()
         val s2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
-        val l = s1.merge(s2).listen {
+        val l = s1.orElse(s2).listen {
             out.add(it.value)
         }
         System.gc()

@@ -11,7 +11,7 @@ import sodium.impl.*
  * their ordering is retained. In many common cases the ordering will
  * be undefined.
  */
-public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
+public fun <A> Stream<A>.orElse(other: Stream<A>): Stream<A> {
     return merge(other) { a: Event<A>, b: Event<A> ->
         b.value
     }
