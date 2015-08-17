@@ -58,13 +58,15 @@ public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) :
         return value ?: throw IllegalStateException("Cell has no value!")
     }
 
-    fun value(trans1: Transaction): Stream<A> {
+    fun value(trans1: Transaction): StreamImpl<A> {
         val out = StreamWithSend<A>()
-        trans1.prioritized(out.node) {
-            out.send(it, sampleNoTrans())
-        }
         val l = stream.listen(trans1, out.node) { trans2, event ->
-            out.send(trans2, event)
+            if (out.firings == null) {
+                out.send(trans2, event)
+            }
+        }
+        trans1.prioritized(out.node) {
+            out.send(it, stream.firings ?: sampleNoTrans())
         }
         debugCollector?.visitPrimitive(l)
         return out.addCleanup(l)

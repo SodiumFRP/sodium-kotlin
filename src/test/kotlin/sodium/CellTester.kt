@@ -86,6 +86,20 @@ public class CellTester : TestCase() {
         TestCase.assertEquals(Arrays.asList(12), out)
     }
 
+    public fun testValuesTx() {
+        val b = Sodium.cellSink(9)
+        val out = ArrayList<Int>()
+        val l = Sodium.tx {
+            val listener = b.operational().value().listen { out.add(it.value) }
+            b.send(2)
+            listener
+        }
+        System.gc()
+        b.send(7)
+        l.unlisten()
+        TestCase.assertEquals(Arrays.asList(2, 7), out)
+    }
+
     public fun testValueThenMap() {
         val b = Sodium.cellSink(9)
         val out = ArrayList<Int>()
