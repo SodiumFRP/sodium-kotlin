@@ -104,7 +104,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("1", "map2", "3", "sent", "5"), out)
     }
 
-    public fun testMergeNonSimultaneous() {
+    public fun testOrElseNonSimultaneous() {
         val e1 = Sodium.streamSink<Int>()
         val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
@@ -119,7 +119,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(7, 9, 8), out)
     }
 
-    public fun testMergeSimultaneous() {
+    public fun testOrElseSimultaneous() {
         val s1 = Sodium.streamSink<Int>()
         val s2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
@@ -146,6 +146,32 @@ public class StreamTester : TestCase() {
         }
         l.unlisten()
         TestCase.assertEquals(listOf(60, 9, 90, 90, 90), out)
+    }
+
+    public fun testMerge() {
+        val e1 = Sodium.streamSink<Int>()
+        val e2 = Sodium.streamSink<Int>()
+        val out = ArrayList<Int>()
+        val l = e1.merge(e2) { a, b ->
+            a.value * 10 + b.value
+        }.listen {
+            out.add(it.value)
+        }
+        System.gc()
+        e1.send(1)
+        e2.send(2)
+
+        Sodium.tx {
+            e1.send(3)
+            e2.send(4)
+        }
+
+        Sodium.tx {
+            e2.send(6)
+            e1.send(5)
+        }
+        l.unlisten()
+        TestCase.assertEquals(listOf(1, 2, 34, 56), out)
     }
 
     public fun testFilter() {
