@@ -3,8 +3,6 @@ package sodium
 import junit.framework.TestCase
 import sodium.impl.Transaction
 import java.util.ArrayList
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 public class StreamTester : TestCase() {
     init {
@@ -282,29 +280,6 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('C', 'B', 'A'), out)
     }
 
-    public fun testOnExecutor() {
-        val executor = Executors.newSingleThreadExecutor()
-        val threadId = arrayOfNulls<Long>(2)
-        executor.execute {
-            threadId.set(0, Thread.currentThread().getId())
-        }
-
-        val (l, s) = Sodium.tx {
-            val s = streamSink<Unit>()
-            s.defer(executor).listen {
-                threadId.set(1, Thread.currentThread().getId())
-            } to s
-        }
-
-        System.gc()
-        s.send(Unit)
-
-        executor.shutdown()
-        executor.awaitTermination(10, TimeUnit.SECONDS)
-        TestCase.assertEquals(threadId[0], threadId[1])
-        l.unlisten()
-    }
-
     public fun testFlatten() {
         val out = ArrayList<Int>()
         val sink = Sodium.streamSink<Int>()
@@ -404,18 +379,18 @@ public class StreamTester : TestCase() {
     public fun testDefer2() {
         val out = ArrayList<String>()
         val sink = Sodium.streamSink<Int>()
-        val l2 = arrayOfNulls<Listener>(1)
+        var l2: Listener? = null
         val l = Sodium.tx {
             sink.map {
                 const("A").operational().value().defer()
             }.listen {
-                l2[0] = it.value.listen {
+                l2 = it.value.listen {
                     out.add(it.value)
                 }
             }
         }
         sink.send(1)
-        l2[0]?.unlisten()
+        l2?.unlisten()
         l.unlisten();
         TestCase.assertEquals(listOf("A"), out);
     }

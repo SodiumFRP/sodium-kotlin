@@ -219,19 +219,19 @@ public abstract class StreamImpl<A> : Stream<A> {
     override fun once(): StreamImpl<A> {
         // This is a bit long-winded but it's efficient because it deregisters
         // the listener.
-        val la = arrayOfNulls<Listener>(1)
+        var la: Listener? = null
         val out = StreamWithSend<A>()
-        la[0] = Transaction.apply {
+        la = Transaction.apply {
             listen(it, out.node) { trans, a ->
-                val listener = la[0]
+                val listener = la
                 if (listener != null) {
                     out.send(trans, a)
                     listener.unlisten()
-                    la[0] = null
+                    la = null
                 }
             }
         }
-        val listener = la[0]
+        val listener = la
         return if (listener == null) this else out.addCleanup(listener)
     }
 
@@ -246,21 +246,6 @@ public abstract class StreamImpl<A> : Stream<A> {
             current.unlisten()
             current = current.next
         }
-    }
-
-    override fun defer(executor: Executor): StreamImpl<A> {
-        val out = StreamWithSend<A>()
-        val listener = Transaction.apply {
-            listen(it, out.node) { trans2, value ->
-                executor.execute {
-                    Transaction.apply {
-                        out.send(it, value)
-                    }
-                }
-            }
-        }
-        debugCollector?.visitPrimitive(listener)
-        return out.addCleanup(listener)
     }
 
     override fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B> {

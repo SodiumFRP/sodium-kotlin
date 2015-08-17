@@ -206,13 +206,13 @@ public class CellTester : TestCase() {
     }
 
     public fun testTransaction() {
-        val calledBack = BooleanArray(1)
+        var calledBack = false
         Transaction.apply {
             it.prioritized(Node.NULL) {
-                calledBack[0] = true
+                calledBack = true
             }
         }
-        TestCase.assertEquals(true, calledBack[0])
+        TestCase.assertEquals(true, calledBack)
     }
 
     public fun testHoldIsDelayed() {
