@@ -11,8 +11,8 @@ import sodium.impl.*
  * their ordering is retained. In many common cases the ordering will
  * be undefined.
  */
-public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
-    return merge(other) { a: Event<A>, b: Event<A> ->
+public fun <A> Stream<A>.orElse(other: Stream<A>): Stream<A> {
+    return merge(this, other) { a: Event<A>, b: Event<A> ->
         b.value
     }
 }
@@ -25,9 +25,9 @@ public fun <A> Stream<A>.merge(other: Stream<A>): Stream<A> {
  * within the same transaction), they are combined using the same logic as
  * 'coalesce'.
  */
-public fun <A> Stream<A>.merge(other: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
-    val ea = this as StreamImpl<A>
-    val eb = other as StreamImpl<A>
+public fun <A> merge(first: Stream<A>, second: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
+    val ea = first as StreamImpl<A>
+    val eb = second as StreamImpl<A>
     val out = StreamWithSend<A>()
     val left = Node<A>(0)
     val right = Node<A>(1)
