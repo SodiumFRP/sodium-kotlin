@@ -327,7 +327,7 @@ public class CellTester : TestCase() {
         val l = bo.listen {
             out.add(it.value)
         }
-        esb.send(SB('B', 'b', null))
+        //esb.send(SB('B', 'b', null))
         esb.send(SB('C', 'c', bb))
         esb.send(SB('D', 'd', null))
         esb.send(SB('E', 'e', ba))
@@ -339,6 +339,25 @@ public class CellTester : TestCase() {
         esb.send(SB('I', 'i', ba))
         l.unlisten()
         TestCase.assertEquals(Arrays.asList('A', 'B', 'c', 'd', 'E', 'F', 'f', 'F', 'g', 'H', 'I'), out)
+    }
+
+    public fun testSSS() {
+        val esb = Sodium.streamSink<Char>()
+        val cell1 = esb.hold('A')
+        val cell2 = esb.hold('B')
+        val cellOfCells = Sodium.cellSink(cell1)
+        val out = ArrayList<Char>()
+
+        val listener = cellOfCells.switchC().listen {
+            out.add(it.value)
+        }
+
+        Sodium.tx {
+            esb.send('X')
+            cellOfCells.send(cell2)
+        }
+        TestCase.assertEquals(listOf('A', 'B'), out)
+        listener.unlisten()
     }
 
     public fun testSwitchE() {
