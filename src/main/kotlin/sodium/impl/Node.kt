@@ -7,14 +7,14 @@ import java.util.HashSet
 public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     val listeners = HashSet<Target<A>>()
 
-    @suppress("NOTHING_TO_INLINE")
+    @Suppress("NOTHING_TO_INLINE")
     inline fun link(node: Node<*>, noinline action: ((Transaction, Event<A>) -> Unit)?): Target<A> {
         val target = Target(action, node)
         listeners.add(target)
         return target
     }
 
-    @suppress("NOTHING_TO_INLINE")
+    @Suppress("NOTHING_TO_INLINE")
     inline fun unlink(target: Target<out A>) {
         listeners.remove(target)
     }

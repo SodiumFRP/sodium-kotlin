@@ -120,8 +120,8 @@ private fun Appendable.formatAction(action: Any) {
 }
 
 private fun fileAndLine(element: StackTraceElement): String {
-    val fileName = element.getFileName()
-    val line = element.getLineNumber()
+    val fileName = element.fileName
+    val line = element.lineNumber
     return "$fileName:$line"
 }
 
@@ -132,11 +132,11 @@ public class DebugCollector {
     val info = WeakHashMap<Any, DebugInfo>()
 
     public fun visitPrimitive(listener: Listener) {
-        val trace = Thread.currentThread().getStackTrace()
+        val trace = Thread.currentThread().stackTrace
         val e2 = trace.get(2)
-        val opName = e2.getMethodName()
+        val opName = e2.methodName
         val e3 = trace.get(3)
-        val e = if (e3.getClassName() == e2.getClassName() && e3.getMethodName() == e2.getMethodName()) {
+        val e = if (e3.className == e2.className && e3.methodName == e2.methodName) {
             trace.get(4)
         } else {
             e3

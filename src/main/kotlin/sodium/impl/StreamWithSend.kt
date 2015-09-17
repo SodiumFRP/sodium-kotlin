@@ -19,9 +19,6 @@ public open class StreamWithSend<A> : StreamImpl<A>() {
         }
 
         val listeners = synchronized (Transaction.listenersLock) {
-            if (node.listeners.isEmpty())
-                return
-
             node.listeners.toTypedArray()
         }
 
