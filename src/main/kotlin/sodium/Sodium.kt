@@ -40,5 +40,5 @@ public object Sodium {
         debugCollector = DebugCollector()
     }
 
-    public val unhandledExceptions: ((Exception) -> Unit)? = null
+    public var unhandledExceptions: ((Exception) -> Unit)? = null
 }
