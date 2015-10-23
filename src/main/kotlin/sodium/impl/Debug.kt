@@ -6,8 +6,27 @@ import sodium.Stream
 import java.util.HashSet
 import java.util.WeakHashMap
 
-private abstract data class Direction<A, B>(val from: A, val to: B) {
+private abstract class Direction<A, B>(val from: A, val to: B) {
     public abstract fun format(sb: Appendable)
+
+    override fun equals(other: Any?): Boolean{
+        if (this === other) return true
+        if (other?.javaClass != this.javaClass) return false
+
+        other as Direction<*, *>
+
+        if (from != other.from) return false
+        if (to != other.to) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int{
+        var result = from?.hashCode() ?: 0
+        result += 31 * result + (to?.hashCode() ?: 0)
+        return result
+    }
+
 }
 
 private fun collectDirections(out: MutableSet<Direction<*, *>>, node: Node<*>) {

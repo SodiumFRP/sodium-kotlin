@@ -40,5 +40,6 @@ public object Sodium {
         debugCollector = DebugCollector()
     }
 
+    @JvmField
     public var unhandledExceptions: ((Exception) -> Unit)? = null
 }

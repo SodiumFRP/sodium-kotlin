@@ -79,7 +79,7 @@ public interface Stream<out A> {
      * when this stream is garbage collected. Useful for functions that initiate I/O,
      * returning the result of it through a stream.
      */
-    fun addCleanup(cleanup: Listener): Stream<A>
+    infix fun addCleanup(cleanup: Listener): Stream<A>
 
     fun <B> flatMap(transform: (Event<A>) -> Stream<B>?): Stream<B>
 }
