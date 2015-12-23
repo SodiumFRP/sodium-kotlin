@@ -53,7 +53,7 @@ public class CellTester : TestCase() {
             try {
                 out.add(it.value)
             } catch (e: Exception) {
-                out.add(e.getMessage())
+                out.add(e.message ?: "")
             }
         }
         System.gc()
@@ -314,7 +314,7 @@ public class CellTester : TestCase() {
     }
 
     public fun testSwitchE() {
-        private class SE(val a: Char, val b: Char, val sw: Stream<Char>?)
+        class SE(val a: Char, val b: Char, val sw: Stream<Char>?)
 
         val ese = Sodium.streamSink<SE>()
         val ea = ese.map { it.value.a }

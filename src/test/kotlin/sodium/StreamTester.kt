@@ -91,7 +91,7 @@ public class StreamTester : TestCase() {
             try {
                 out.add(it.value)
             } catch (e: Exception) {
-                out.add(e.getMessage())
+                out.add(e.message ?: "")
             }
         }
         System.gc()
@@ -188,7 +188,7 @@ public class StreamTester : TestCase() {
 
     public fun testFilterThrows() {
         val e = Sodium.streamSink<Char?>()
-        val out = ArrayList<Char>()
+        val out = ArrayList<Char?>()
         val l = e.filter { it.value!!.isUpperCase() }.listen { out.add(it.value) }
         System.gc()
         e.send('H')

@@ -16,7 +16,7 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
 
     @Suppress("NOTHING_TO_INLINE")
     inline fun unlink(target: Target<out A>) {
-        listeners.removeRaw(target)
+        listeners.remove(target)
     }
 
     /**
