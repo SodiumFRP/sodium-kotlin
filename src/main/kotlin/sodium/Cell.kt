@@ -2,7 +2,7 @@ package sodium
 
 import java.util.concurrent.Executor
 
-public interface Cell<out A> {
+interface Cell<out A> {
     /**
      * Sample the cell's current value.
      *

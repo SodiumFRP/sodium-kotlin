@@ -3,9 +3,9 @@ package sodium
 import sodium.impl.CellImpl
 import sodium.impl.Transaction
 
-public class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), null) {
+class CellLoop<A> : LazyCell<A>(StreamLoop<A>(), null) {
 
-    public infix fun loop(a_out: Cell<A>): Cell<A> {
+    infix fun loop(a_out: Cell<A>): Cell<A> {
         Transaction.apply {
             val cell = a_out as CellImpl<A>
             val stream = stream as StreamLoop<A>

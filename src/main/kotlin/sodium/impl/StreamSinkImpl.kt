@@ -5,7 +5,7 @@ import sodium.Event
 import sodium.StreamSink
 import sodium.Value
 
-public class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
+class StreamSinkImpl<A> : StreamSink<A>, StreamWithSend<A>() {
     override fun send(a: A) {
         Transaction.apply {
             if (Transaction.inCallback > 0)

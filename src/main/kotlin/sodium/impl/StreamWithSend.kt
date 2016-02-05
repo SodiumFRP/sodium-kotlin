@@ -4,7 +4,7 @@ import sodium.Error
 import sodium.Event
 import sodium.Value
 
-public open class StreamWithSend<A> : StreamImpl<A>() {
+open class StreamWithSend<A> : StreamImpl<A>() {
     override var firings: Event<A>? = null
 
     fun send(trans: Transaction, a: Event<A>) {

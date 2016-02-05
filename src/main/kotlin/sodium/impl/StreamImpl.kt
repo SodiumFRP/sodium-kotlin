@@ -6,7 +6,7 @@ import sodium.Stream
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
-public abstract class StreamImpl<A> : Stream<A> {
+abstract class StreamImpl<A> : Stream<A> {
     val node = Node<A>(0)
     private val finalizers = AtomicReference<ListenerImpl>()
     abstract var firings: Event<A>?

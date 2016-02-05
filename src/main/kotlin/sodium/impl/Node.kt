@@ -4,7 +4,7 @@ import sodium.Event
 import java.lang.ref.WeakReference
 import java.util.HashSet
 
-public class Node<A>(var rank: Long) : Comparable<Node<*>> {
+class Node<A>(var rank: Long) : Comparable<Node<*>> {
     val listeners = HashSet<Target<A>>()
 
     @Suppress("NOTHING_TO_INLINE")
@@ -44,10 +44,10 @@ public class Node<A>(var rank: Long) : Comparable<Node<*>> {
     }
 
     companion object {
-        public val NULL: Node<Any> = Node(Long.MAX_VALUE)
+        val NULL: Node<Any> = Node(Long.MAX_VALUE)
     }
 
-    public class Target<A>(action: ((Transaction, Event<A>) -> Unit)?, val node: Node<*>) {
+    class Target<A>(action: ((Transaction, Event<A>) -> Unit)?, val node: Node<*>) {
         val action = WeakReference(action)
     }
 }

@@ -1,6 +1,6 @@
 package sodium
 
-public interface Operational<out A> {
+interface Operational<out A> {
     /**
      * A stream that gives the updates for the cell.
      */

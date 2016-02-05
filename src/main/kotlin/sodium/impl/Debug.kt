@@ -7,7 +7,7 @@ import java.util.HashSet
 import java.util.WeakHashMap
 
 private abstract class Direction<A, B>(val from: A, val to: B) {
-    public abstract fun format(sb: Appendable)
+    abstract fun format(sb: Appendable)
 
     override fun equals(other: Any?): Boolean{
         if (this === other) return true
@@ -96,7 +96,7 @@ private fun Appendable.direction(from: String, to: String) {
     single(to)
 }
 
-public fun dump(sb: Appendable, vararg nodes: Node<*>): Unit = with(sb) {
+fun dump(sb: Appendable, vararg nodes: Node<*>): Unit = with(sb) {
     append('\n')
     append("digraph G {")
     declareNodeStyle(*nodes)
@@ -113,11 +113,11 @@ public fun dump(sb: Appendable, vararg nodes: Node<*>): Unit = with(sb) {
     Unit
 }
 
-public fun dump(cell: Cell<*>) {
+fun dump(cell: Cell<*>) {
     dump(System.out, (cell as CellImpl<*>).stream.node)
 }
 
-public fun dump(vararg stream: Stream<*>) {
+fun dump(vararg stream: Stream<*>) {
     dump(System.out, *(stream.map { (it as StreamImpl<*>).node }.toTypedArray()))
 }
 
@@ -144,13 +144,13 @@ private fun fileAndLine(element: StackTraceElement): String {
     return "$fileName:$line"
 }
 
-public class DebugInfo(val opName: String,
+class DebugInfo(val opName: String,
                        val fileAndLine: String)
 
-public class DebugCollector {
+class DebugCollector {
     val info = WeakHashMap<Any, DebugInfo>()
 
-    public fun visitPrimitive(listener: Listener) {
+    fun visitPrimitive(listener: Listener) {
         val trace = Thread.currentThread().stackTrace
         val e2 = trace.get(2)
         val opName = e2.methodName
@@ -166,4 +166,4 @@ public class DebugCollector {
     }
 }
 
-public var debugCollector: DebugCollector? = null
+var debugCollector: DebugCollector? = null

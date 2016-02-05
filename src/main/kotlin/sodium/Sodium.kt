@@ -2,22 +2,22 @@ package sodium
 
 import sodium.impl.*
 
-public object Sodium {
-    public fun <A> const(value: A): Cell<A> = CellImpl(Value(value), NeverStreamImpl<A>())
+object Sodium {
+    fun <A> const(value: A): Cell<A> = CellImpl(Value(value), NeverStreamImpl<A>())
 
-    public fun <A> cell(value: A, stream: Stream<A>): Cell<A> = CellImpl(Value(value), stream as StreamImpl<A>)
+    fun <A> cell(value: A, stream: Stream<A>): Cell<A> = CellImpl(Value(value), stream as StreamImpl<A>)
 
-    public fun <A> cellSink(value: A): CellSink<A> = CellSinkImpl(value)
+    fun <A> cellSink(value: A): CellSink<A> = CellSinkImpl(value)
 
-    public fun <A> cellLoop(): CellLoop<A> = CellLoop()
+    fun <A> cellLoop(): CellLoop<A> = CellLoop()
 
-    public fun <A> streamSink(): StreamSink<A> = StreamSinkImpl<A>()
+    fun <A> streamSink(): StreamSink<A> = StreamSinkImpl<A>()
 
-    public fun <A> streamLoop(): StreamLoop<A> = StreamLoop()
+    fun <A> streamLoop(): StreamLoop<A> = StreamLoop()
 
-    public fun <A> cellSinkLazy(value: () -> A): LazyCellSink<A> = LazyCellSink(value)
+    fun <A> cellSinkLazy(value: () -> A): LazyCellSink<A> = LazyCellSink(value)
 
-    public fun <A> just(value: A): Stream<A> {
+    fun <A> just(value: A): Stream<A> {
         val sink = StreamWithSend<A>()
         Transaction.apply {
             sink.send(it, Value<A>(value))
@@ -28,18 +28,18 @@ public object Sodium {
     /**
      * An event that never fires.
      */
-    public fun <A> never(): Stream<A> = NeverStreamImpl<A>()
+    fun <A> never(): Stream<A> = NeverStreamImpl<A>()
 
-    public fun <R> tx(body: Sodium.() -> R): R {
+    fun <R> tx(body: Sodium.() -> R): R {
         return Transaction.apply {
             body()
         }
     }
 
-    public fun enableDebugMode() {
+    fun enableDebugMode() {
         debugCollector = DebugCollector()
     }
 
     @JvmField
-    public var unhandledExceptions: ((Exception) -> Unit)? = null
+    var unhandledExceptions: ((Exception) -> Unit)? = null
 }

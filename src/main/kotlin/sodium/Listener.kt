@@ -1,6 +1,6 @@
 package sodium
 
-public interface Listener {
+interface Listener {
     fun unlisten()
 }
 

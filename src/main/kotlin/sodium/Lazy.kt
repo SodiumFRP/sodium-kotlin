@@ -1,10 +1,10 @@
 package sodium
 
-public object Lazy {
+object Lazy {
     /**
      * Like map from Lazy<A> to Lazy<B>
      */
-    public inline fun <A, B> lift(crossinline f: Event<A>.() -> B,
+    inline fun <A, B> lift(crossinline f: Event<A>.() -> B,
                                   crossinline a: () -> Event<A>): () -> B {
         return {
             a().f()
@@ -14,7 +14,7 @@ public object Lazy {
     /**
      * Lift a binary function into lazy values.
      */
-    public inline fun <A, B, C> lift(crossinline f: (Event<A>, Event<B>) -> C,
+    inline fun <A, B, C> lift(crossinline f: (Event<A>, Event<B>) -> C,
                                      crossinline a: () -> Event<A>,
                                      crossinline b: () -> Event<B>): () -> C {
         return {
@@ -25,7 +25,7 @@ public object Lazy {
     /**
      * Lift a ternary function into lazy values.
      */
-    public inline fun <A, B, C, D> lift(crossinline f: (A, B, C) -> D,
+    inline fun <A, B, C, D> lift(crossinline f: (A, B, C) -> D,
                                         crossinline a: () -> A,
                                         crossinline b: () -> B,
                                         crossinline c: () -> C): () -> D {
@@ -37,7 +37,7 @@ public object Lazy {
     /**
      * Lift a quaternary function into lazy values.
      */
-    public inline fun <A, B, C, D, E> lift(crossinline f: (A, B, C, D) -> E,
+    inline fun <A, B, C, D, E> lift(crossinline f: (A, B, C, D) -> E,
                                            crossinline a: () -> A,
                                            crossinline b: () -> B,
                                            crossinline c: () -> C,

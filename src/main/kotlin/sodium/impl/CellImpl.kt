@@ -4,7 +4,7 @@ import sodium.*
 import sodium.Stream
 import java.util.concurrent.Executor
 
-public open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A>, Operational<A> {
+open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A>, Operational<A> {
     private val listener: Listener
     private var valueUpdate: Event<A>? = null
 

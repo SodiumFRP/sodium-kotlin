@@ -1,3 +1,3 @@
 package sodium
 
-public interface CellSink<A> : Cell<A>, Sink<A>
+interface CellSink<A> : Cell<A>, Sink<A>

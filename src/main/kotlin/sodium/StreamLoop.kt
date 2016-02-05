@@ -5,7 +5,7 @@ import sodium.impl.StreamWithSend
 import sodium.impl.Transaction
 import sodium.impl.debugCollector
 
-public class StreamLoop<A> : StreamWithSend<A>() {
+class StreamLoop<A> : StreamWithSend<A>() {
     var assigned: Boolean = false
 
     init {
@@ -13,7 +13,7 @@ public class StreamLoop<A> : StreamWithSend<A>() {
             throw AssertionError("StreamLoop/CellLoop must be used within an explicit transaction")
     }
 
-    public fun loop(ea_out: Stream<A>): Stream<A> {
+    fun loop(ea_out: Stream<A>): Stream<A> {
         if (assigned)
             throw AssertionError("StreamLoop looped more than once")
         assigned = true

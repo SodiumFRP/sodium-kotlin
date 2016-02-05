@@ -2,7 +2,7 @@ package sodium
 
 import java.util.concurrent.Executor
 
-public interface Stream<out A> {
+interface Stream<out A> {
     /**
      * Listen for firings of this event. The returned Listener has an unlisten()
      * method to cause the listener to be removed. This is the observer pattern.

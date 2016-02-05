@@ -4,12 +4,12 @@ import junit.framework.TestCase
 import sodium.impl.Transaction
 import java.util.ArrayList
 
-public class StreamTester : TestCase() {
+class StreamTester : TestCase() {
     init {
         Sodium.enableDebugMode()
     }
 
-    public fun testSendStream() {
+    fun testSendStream() {
         val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e.listen {
@@ -28,7 +28,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(5), out)
     }
 
-    public fun testListenThrows() {
+    fun testListenThrows() {
         val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val l = e.listen {
@@ -48,7 +48,7 @@ public class StreamTester : TestCase() {
         l.unlisten()
     }
 
-    public fun testListenInTx() {
+    fun testListenInTx() {
         val e = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         Sodium.tx {
@@ -62,7 +62,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(5), out)
     }
 
-    public fun testMap() {
+    fun testMap() {
         val e = Sodium.streamSink<Int>()
         val m = e.map {
             it.value.toString()
@@ -78,7 +78,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("5"), out)
     }
 
-    public fun testMapThrows() {
+    fun testMapThrows() {
         val e = Sodium.streamSink<Int>()
         val m = e.map {
             val v = it.value
@@ -104,7 +104,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("1", "map2", "3", "sent", "5"), out)
     }
 
-    public fun testOrElseNonSimultaneous() {
+    fun testOrElseNonSimultaneous() {
         val e1 = Sodium.streamSink<Int>()
         val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
@@ -119,7 +119,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(7, 9, 8), out)
     }
 
-    public fun testOrElseSimultaneous() {
+    fun testOrElseSimultaneous() {
         val s1 = Sodium.streamSink<Int>()
         val s2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
@@ -148,7 +148,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(60, 9, 90, 90, 90), out)
     }
 
-    public fun testMerge() {
+    fun testMerge() {
         val e1 = Sodium.streamSink<Int>()
         val e2 = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
@@ -174,7 +174,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(1, 2, 34, 56), out)
     }
 
-    public fun testFilter() {
+    fun testFilter() {
         val e = Sodium.streamSink<Char>()
         val out = ArrayList<Char>()
         val l = e.filter { it.value.isUpperCase() }.listen { out.add(it.value) }
@@ -186,7 +186,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('H', 'I'), out)
     }
 
-    public fun testFilterThrows() {
+    fun testFilterThrows() {
         val e = Sodium.streamSink<Char?>()
         val out = ArrayList<Char?>()
         val l = e.filter { it.value!!.isUpperCase() }.listen { out.add(it.value) }
@@ -199,7 +199,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('H', 'I'), out)
     }
 
-    public fun testFilterNotNull() {
+    fun testFilterNotNull() {
         val e = Sodium.streamSink<String?>()
         val out = ArrayList<String>()
         val l = e.filterNotNull().listen { out.add(it.value) }
@@ -211,7 +211,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("tomato", "peach"), out)
     }
 
-    public fun testLoopStream() {
+    fun testLoopStream() {
         val ea = Sodium.streamSink<Int>()
         val ec = Transaction.apply {
             val eb = StreamLoop<Int>()
@@ -229,7 +229,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(2, 7), out)
     }
 
-    public fun testGate() {
+    fun testGate() {
         val ec = Sodium.streamSink<Char>()
         val predicate = Sodium.cellSink(true)
         val out = ArrayList<Char>()
@@ -244,7 +244,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('H', 'I'), out)
     }
 
-    public fun testCollect() {
+    fun testCollect() {
         val ea = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val sum = ea.collect(100) { a, s ->
@@ -262,7 +262,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(105, 112, 113, 115, 118), out)
     }
 
-    public fun testAccum() {
+    fun testAccum() {
         val ea = Sodium.streamSink<Int>()
         val out = ArrayList<Int>()
         val sum = ea.accum(100) { a, s ->
@@ -279,7 +279,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(100, 105, 112, 113, 115, 118), out)
     }
 
-    public fun testOnce() {
+    fun testOnce() {
         val e = Sodium.streamSink<Char>()
         val out = ArrayList<Char>()
         val l = e.once().listen { out.add(it.value) }
@@ -291,7 +291,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('A'), out)
     }
 
-    public fun testDefer() {
+    fun testDefer() {
         val out = ArrayList<Char>()
         val e = Sodium.streamSink<Char>()
         val l = Sodium.tx {
@@ -306,7 +306,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf('C', 'B', 'A'), out)
     }
 
-    public fun testFlatten() {
+    fun testFlatten() {
         val out = ArrayList<Int>()
         val sink = Sodium.streamSink<Int>()
         val s1 = sink.map { it.value * 10 }
@@ -336,7 +336,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf(20, 30, 40, 500, 600, 70), out)
     }
 
-    public fun testFlatMap() {
+    fun testFlatMap() {
         val out = ArrayList<String>()
         val sink1 = Sodium.streamSink<Int>()
         val sink2 = Sodium.streamSink<String>()
@@ -372,7 +372,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("Bb", "Bc", "Ad", "Ae", "Af", "Bg"), out)
     }
 
-    public fun testFlatMap2() {
+    fun testFlatMap2() {
         val out = ArrayList<String>()
         val sink = Sodium.streamSink<Int>()
 
@@ -390,7 +390,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("A1", "A3"), out)
     }
 
-    public fun testSwitchAndDefer() {
+    fun testSwitchAndDefer() {
         val out = ArrayList<String>()
         val si = Sodium.streamSink<Int>()
         val l = si.map {
@@ -402,7 +402,7 @@ public class StreamTester : TestCase() {
         TestCase.assertEquals(listOf("A2", "A4"), out);
     }
 
-    public fun testDefer2() {
+    fun testDefer2() {
         val out = ArrayList<String>()
         val sink = Sodium.streamSink<Int>()
         var l2: Listener? = null

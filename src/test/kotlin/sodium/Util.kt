@@ -3,7 +3,7 @@ package sodium
 import org.junit.Assert
 
 object Util {
-    public fun assertThrows(body: () -> Unit) {
+    fun assertThrows(body: () -> Unit) {
         var ex: Exception? = null
 
         try {

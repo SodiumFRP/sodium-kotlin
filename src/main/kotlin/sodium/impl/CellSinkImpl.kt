@@ -5,7 +5,7 @@ import sodium.Error
 import sodium.Event
 import sodium.Value
 
-public class CellSinkImpl<A>(initValue: A) : CellSink<A>, CellImpl<A>(Value(initValue), StreamWithSend<A>()) {
+class CellSinkImpl<A>(initValue: A) : CellSink<A>, CellImpl<A>(Value(initValue), StreamWithSend<A>()) {
     override fun send(a: A) {
         Transaction.apply {
             if (Transaction.inCallback > 0)

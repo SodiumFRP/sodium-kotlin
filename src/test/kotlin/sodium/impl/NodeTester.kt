@@ -2,8 +2,8 @@ package sodium.impl
 
 import junit.framework.TestCase
 
-public class NodeTester : TestCase() {
-    public fun testNode() {
+class NodeTester : TestCase() {
+    fun testNode() {
         val a = Node<Any>(0)
         val b = Node<Any>(1)
         a.link(b, null)

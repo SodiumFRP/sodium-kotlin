@@ -11,7 +11,7 @@ import sodium.impl.*
  * their ordering is retained. In many common cases the ordering will
  * be undefined.
  */
-public infix fun <A> Stream<A>.orElse(other: Stream<A>): Stream<A> {
+infix fun <A> Stream<A>.orElse(other: Stream<A>): Stream<A> {
     return merge(this, other) { a: Event<A>, b: Event<A> ->
         b.value
     }
@@ -25,7 +25,7 @@ public infix fun <A> Stream<A>.orElse(other: Stream<A>): Stream<A> {
  * within the same transaction), they are combined using the same logic as
  * 'coalesce'.
  */
-public fun <A> merge(first: Stream<A>, second: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
+fun <A> merge(first: Stream<A>, second: Stream<A>, combine: (Event<A>, Event<A>) -> A): Stream<A> {
     val ea = first as StreamImpl<A>
     val eb = second as StreamImpl<A>
     val out = StreamWithSend<A>()
@@ -59,11 +59,11 @@ public fun <A> merge(first: Stream<A>, second: Stream<A>, combine: (Event<A>, Ev
  * That is, state updates caused by event firings get processed at the end of
  * the transaction.
  */
-public fun <A> Stream<A>.hold(initValue: A): Cell<A> {
+fun <A> Stream<A>.hold(initValue: A): Cell<A> {
     return CellImpl(Value(initValue), this as StreamImpl<A>)
 }
 
-public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
+fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
     return LazyCell(this as StreamImpl<A>, initValue)
 }
 
@@ -72,7 +72,7 @@ public fun <A> Stream<A>.holdLazy(initValue: () -> A): Cell<A> {
  *
  * Does not send events if Error.
  */
-public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
+fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<C>
     val listener = Transaction.apply {
@@ -101,7 +101,7 @@ public fun <A, C : Collection<A>> Stream<C>.split(): Stream<A> {
 /**
  * Unwrap a stream inside a cell to give a time-varying stream implementation.
  */
-public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
+fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
     val out = StreamWithSend<A>()
     val listener = Transaction.apply {
         val bea = this as CellImpl<Stream<A>?>
@@ -118,7 +118,7 @@ public fun <A> Cell<Stream<A>?>.switchS(): Stream<A> {
     return out.addCleanup(listener)
 }
 
-public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
+fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<Stream<A>?>
     val listener = Transaction.apply {
@@ -131,7 +131,7 @@ public fun <A> Stream<Stream<A>?>.flatten(): Stream<A> {
  * Filter out any event occurrences whose value is a Java null pointer.
  */
 @Suppress("UNCHECKED_CAST", "BASE_WITH_NULLABLE_UPPER_BOUND")
-public fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
+fun <A> Stream<A?>.filterNotNull(): StreamImpl<A> {
     val out = StreamWithSend<A>()
     val thiz = this as StreamImpl<A?>
     val l = Transaction.apply {

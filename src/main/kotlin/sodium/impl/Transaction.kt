@@ -4,7 +4,7 @@ import java.util.ArrayList
 import java.util.HashSet
 import java.util.PriorityQueue
 
-public class Transaction {
+class Transaction {
     private val prioritizedQ = PriorityQueue<Entry>()
     private val entries = HashSet<Entry>()
     private val lastQ = ArrayList<() -> Unit>()
@@ -13,7 +13,7 @@ public class Transaction {
     // True if we need to re-generate the priority queue.
     var toRegen: Boolean = false
 
-    public fun prioritized(node: Node<*>, action: (Transaction) -> Unit) {
+    fun prioritized(node: Node<*>, action: (Transaction) -> Unit) {
         val e = Entry(node, action)
         prioritizedQ.add(e)
         entries.add(e)
@@ -22,14 +22,14 @@ public class Transaction {
     /**
      * Add an action to run after all prioritized() actions.
      */
-    public fun last(action: () -> Unit) {
+    fun last(action: () -> Unit) {
         lastQ.add(action)
     }
 
     /**
      * Add an action to run after all last() actions.
      */
-    public fun post(action: () -> Unit) {
+    fun post(action: () -> Unit) {
         val pq = postQ
         val list = if (pq == null) {
             val list = ArrayList<() -> Unit>()
@@ -56,7 +56,7 @@ public class Transaction {
         }
     }
 
-    public fun close() {
+    fun close() {
         while (true) {
             checkRegen()
             if (prioritizedQ.isEmpty())
@@ -72,7 +72,7 @@ public class Transaction {
         lastQ.clear()
     }
 
-    public fun onPostTx() {
+    fun onPostTx() {
         val pq = postQ
         if (pq != null) {
             postQ = null
@@ -106,11 +106,11 @@ public class Transaction {
 
     companion object {
         // Coarse-grained lock that's held during the whole transaction.
-        public val transactionLock: Any = Any()
+        val transactionLock: Any = Any()
         // Fine-grained lock that protects listeners and nodes.
         val listenersLock = Any()
 
-        public var currentTransaction: Transaction = Transaction()
+        var currentTransaction: Transaction = Transaction()
         var inCallback: Int = 0
         private val onStartHooks = ArrayList<Runnable>()
         private var runningOnStartHooks: Boolean = false
@@ -118,7 +118,7 @@ public class Transaction {
         /**
          * Return the current transaction, or null if there isn't one.
          */
-        public fun getCurrent(): Transaction? {
+        fun getCurrent(): Transaction? {
             synchronized (transactionLock) {
                 return currentTransaction
             }
@@ -131,13 +131,13 @@ public class Transaction {
 
          * The main use case of this is the implementation of a time/alarm system.
          */
-        public fun onStart(r: Runnable) {
+        fun onStart(r: Runnable) {
             synchronized (transactionLock) {
                 onStartHooks.add(r)
             }
         }
 
-        public fun begin(): Boolean {
+        fun begin(): Boolean {
             val transWas = currentTransaction
             return if (transWas.began) {
                 false
@@ -159,7 +159,7 @@ public class Transaction {
             }
         }
 
-        public fun end() {
+        fun end() {
             val tx = currentTransaction
             currentTransaction = Transaction()
             tx.onPostTx()
@@ -173,7 +173,7 @@ public class Transaction {
          * transaction automatically. It is useful where you want to run multiple
          * reactive operations atomically.
          */
-        public fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
+        fun <A> apply(code: (Transaction) -> A): A = synchronized (transactionLock) {
             val needClose = begin()
             try {
                 val result = code(currentTransaction)
