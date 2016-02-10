@@ -1,15 +1,13 @@
 package sodium.impl
 
 import sodium.*
-import sodium.Error
-import sodium.Stream
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
 
 abstract class StreamImpl<A> : Stream<A> {
-    val node = Node<A>(0)
+    internal val node = Node<A>(0)
     private val finalizers = AtomicReference<ListenerImpl>()
-    abstract var firings: Event<A>?
+    internal abstract var firings: Event<A>?
 
     override fun listen(executor: Executor, action: (Event<A>) -> Unit): Listener {
         val listener = Transaction.apply {
@@ -43,7 +41,7 @@ abstract class StreamImpl<A> : Stream<A> {
         return listener
     }
 
-    fun listen(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
+    internal fun listen(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             if (target.ensureBiggerThan(node.rank)) {
                 trans.toRegen = true
@@ -70,7 +68,7 @@ abstract class StreamImpl<A> : Stream<A> {
         return ListenerImplementation(this, action, nodeTarget)
     }
 
-    fun listenNoFire(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
+    internal fun listenNoFire(trans: Transaction, target: Node<*>, action: (Transaction, Event<A>) -> Unit): Listener {
         val nodeTarget = synchronized (Transaction.listenersLock) {
             if (target.ensureBiggerThan(node.rank)) {
                 trans.toRegen = true
