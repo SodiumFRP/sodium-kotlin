@@ -1,7 +1,6 @@
 package sodium.impl
 
 import sodium.*
-import sodium.Stream
 import java.util.concurrent.Executor
 
 open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A>, Operational<A> {
@@ -249,45 +248,50 @@ open class CellImpl<A>(var value: Event<A>?, val stream: StreamImpl<A>) : Cell<A
 //         * Apply a value inside a cell to a function inside a cell. This is the
 //         * primitive for all function lifting.
 //         */
-//        public fun <A, B> apply(bf: Cell<(A) -> B>, ba: Cell<A>): Cell<B> {
-//            return Transaction.apply2 {
-//                val out = StreamSink<B>()
+//        fun <A, B> apply(bf: Cell<(A) -> B>, ba: Cell<A>): Cell<B> {
+//            return Transaction.apply {
+//                val out = StreamSinkImpl<B>()
 //
-//                // TODO: refactor it.
 //                class ApplyHandler() : (Transaction) -> Unit {
-//                    var action: ((A) -> B)? = null
-//                    var value: A = null
+//                    lateinit var action: ((A) -> B)
+//                    var value: A? = null
 //
 //                    override fun invoke(trans1: Transaction) {
 //                        trans1.prioritized(out.node) {
-//                            out.send(it, action!!.invoke(value))
+//                            val event = try {
+//                                Value(action.invoke(value!!))
+//                            } catch (e: Exception) {
+//                                Error<B>(e)
+//                            }
+//
+//                            out.send(it, event)
 //                        }
 //                    }
 //                }
 //
 //                val out_target = out.node
 //                val in_target = Node<Any>(0)
-//                val (changed, node_target) = in_target.linkTo(null, out_target)
+//                val node_target = in_target.link(out_target, null)
 //                val applyHandler = ApplyHandler()
-//                val l1 = bf.value(it).listen_(in_target) { trans1, action ->
-//                    applyHandler.action = action
+//                val l1 = (bf as CellImpl).value(it).listen(it, in_target) { trans1, action ->
+//                    applyHandler.action = action.value
 //                    if (applyHandler.value != null) {
 //                        applyHandler(trans1)
 //                    }
 //                }
-//                val l2 = ba.value(it).listen_(in_target) { trans1, action ->
-//                    applyHandler.value = action
+//                val l2 = (ba as CellImpl).value(it).listen(it, in_target) { trans1, action ->
+//                    applyHandler.value = action.value
 //                    if (applyHandler.action != null)
 //                        applyHandler(trans1)
 //                }
 //
-//                out.addCleanup(l1).addCleanup(l2).addCleanup(object : Listener() {
+//                out.addCleanup(l1).addCleanup(l2).addCleanup(object : Listener {
 //                    override fun unlisten() {
-//                        in_target.unlinkTo(node_target)
+//                        in_target.unlink(node_target)
 //                    }
-//                }).holdLazy(Lazy {
-//                    bf.sampleNoTrans().invoke(ba.sampleNoTrans())
-//                })
+//                }).holdLazy {
+//                    bf.sampleNoTrans().value.invoke(ba.sampleNoTrans().value)
+//                }
 //            }
 //        }
 //
